@@ -1,0 +1,1670 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>绿煌老周翡翠私域销售智能体 V4.0</title>
+<style>
+:root {
+  --bg: #0f0f0f;
+  --panel: #1a1a1a;
+  --border: #2a2a2a;
+  --text: #e0e0e0;
+  --text2: #999;
+  --accent: #10b981;
+  --accent2: #059669;
+  --warn: #f59e0b;
+  --danger: #ef4444;
+  --chat-self: #1e3a2f;
+  --chat-other: #1a1a1a;
+  --radius: 10px;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  background: var(--bg); color: var(--text); height: 100vh; overflow: hidden;
+}
+.app { display:flex; height:100vh; }
+
+/* ── 左侧：对话列表面板 ── */
+.session-panel {
+  width:200px; min-width:180px; background:#141414; border-right:1px solid var(--border);
+  display:flex; flex-direction:column;
+}
+.session-panel .session-header {
+  padding:12px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between;
+}
+.session-panel .session-header .title { font-size:13px; font-weight:700; }
+.session-panel .new-btn {
+  padding:4px 10px; border-radius:6px; font-size:12px; cursor:pointer; border:1px solid var(--border);
+  background:var(--accent); color:#000; font-weight:600;
+}
+.session-list { flex:1; overflow-y:auto; padding:6px; }
+.session-list::-webkit-scrollbar { width:4px; }
+.session-list::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+.session-item {
+  padding:8px 10px; border-radius:8px; cursor:pointer; margin-bottom:4px; position:relative; font-size:12px;
+  border:1px solid transparent;
+}
+.session-item:hover { background:#1f1f1f; }
+.session-item.active { background:rgba(16,185,129,.12); border-color:var(--accent2); }
+.session-item .session-title {
+  font-size:13px; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding-right:38px;
+}
+.session-item .session-meta { font-size:11px; color:var(--text2); margin-top:2px; }
+.session-item .session-rename, .session-item .session-del {
+  position:absolute; top:6px; font-size:12px; color:var(--text2); opacity:0; transition:.15s; cursor:pointer;
+}
+.session-item .session-rename { right:22px; }
+.session-item .session-del { right:6px; }
+.session-item:hover .session-rename, .session-item:hover .session-del { opacity:1; }
+.session-item .session-del:hover { color:var(--danger); }
+.session-item .session-rename:hover { color:var(--accent); }
+
+.sidebar-toggle { display:none; }
+
+/* ── 聊天面板 ── */
+.chat-panel {
+  width: 420px; min-width: 360px; background: var(--panel);
+  border-right: 1px solid var(--border); display:flex; flex-direction:column;
+}
+.chat-header {
+  padding: 14px 16px; border-bottom: 1px solid var(--border);
+  display:flex; align-items:center; gap:10px;
+}
+.chat-header .avatar { width:38px; height:38px; border-radius:50%; background: var(--accent); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:14px; color:#000; }
+.chat-header .info { flex:1; }
+.chat-header .name { font-size:15px; font-weight:600; }
+.chat-header .status { font-size:12px; color: var(--text2); }
+.chat-header .status .dot { display:inline-block; width:6px; height:6px; border-radius:50%; background:var(--accent); margin-right:4px; }
+
+.chat-msgs {
+  flex:1; overflow-y:auto; padding: 16px 12px; display:flex; flex-direction:column; gap:10px;
+}
+.chat-msgs::-webkit-scrollbar { width:4px; }
+.chat-msgs::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+
+.chat-bubble {
+  max-width: 85%; padding: 10px 14px; border-radius: var(--radius); font-size:14px; line-height:1.65;
+  word-break: break-word; position:relative;
+}
+.chat-bubble.customer { align-self:flex-start; background:var(--chat-other); border-top-left-radius:2px; }
+.chat-bubble.linqiang {
+  align-self:flex-end; background:var(--chat-self); color:#d1fae5; border-top-right-radius:2px;
+}
+.chat-bubble .meta { font-size:11px; color:var(--text2); margin-bottom:3px; }
+.chat-bubble.system-msg {
+  align-self:center; background:transparent; color:var(--text2); font-size:12px;
+  text-align:center; padding:6px 12px; max-width:100%;
+}
+.chat-bubble.quote-cta {
+  background:transparent; border:1px dashed var(--accent2); color:var(--accent);
+  cursor:pointer; text-align:center; font-size:12px;
+}
+.chat-bubble.quote-cta:hover { background:rgba(16,185,129,.08); }
+
+.img-preview-bar { display:none; align-items:center; gap:8px; padding:8px 12px; border-top:1px solid var(--border); }
+.img-preview-bar.show { display:flex; }
+.img-preview-bar img { width:44px; height:44px; object-fit:cover; border-radius:6px; }
+.img-preview-bar .hint { font-size:11px; color:var(--text2); flex:1; }
+.img-preview-bar .remove-img { cursor:pointer; color:var(--text2); font-size:16px; }
+.img-preview-bar .remove-img:hover { color:var(--danger); }
+
+.chat-input-area {
+  padding: 12px; border-top: 1px solid var(--border); display:flex; gap:8px; align-items:flex-end;
+}
+.chat-input-area textarea {
+  flex:1; background:#252525; border:1px solid var(--border); border-radius:var(--radius);
+  color:var(--text); padding:10px 12px; font-size:14px; font-family:inherit; resize:none;
+  outline:none; min-height:42px; max-height:120px;
+}
+.chat-input-area textarea:focus { border-color: var(--accent); }
+.chat-input-area button {
+  width:42px; height:42px; border-radius:50%; border:none; background:var(--accent);
+  color:#000; font-size:18px; cursor:pointer; flex-shrink:0; transition: .2s;
+}
+.chat-input-area button:hover { background:var(--accent2); }
+.chat-input-area button:disabled { opacity:.4; cursor:not-allowed; }
+
+.preset-btn {
+  width:auto; height:auto; padding:6px 10px; border-radius:var(--radius); font-size:12px;
+  background:#252525; color:var(--text); border:1px solid var(--border); cursor:pointer; white-space:nowrap;
+}
+.preset-btn:hover { border-color: var(--accent); }
+
+/* ── 右侧：分析面板 ── */
+.analysis-panel {
+  flex:1; display:flex; flex-direction:column; background:var(--bg); min-width:500px;
+}
+.analysis-tabs {
+  display:flex; border-bottom: 1px solid var(--border); padding:0 12px; gap:2px;
+}
+.analysis-tabs button {
+  padding:10px 16px; background:none; border:none; color:var(--text2);
+  font-size:13px; cursor:pointer; border-bottom: 2px solid transparent; margin-bottom:-1px;
+}
+.analysis-tabs button.active { color:var(--accent); border-bottom-color:var(--accent); }
+.analysis-content {
+  flex:1; overflow-y:auto; padding:16px 20px;
+}
+.analysis-content::-webkit-scrollbar { width:4px; }
+.analysis-content::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+
+.analysis-empty {
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  height:100%; color:var(--text2); gap:12px;
+}
+.analysis-empty .icon { font-size:48px; opacity:.3; }
+.analysis-empty p { font-size:14px; }
+
+/* ── 反馈区 ── */
+.feedback-bar {
+  display:flex; flex-direction:column; gap:8px; margin-top:8px; padding-top:8px; border-top:1px solid var(--border);
+}
+.feedback-bar .fb-actions { display:flex; gap:6px; align-items:center; }
+.feedback-bar button {
+  padding:3px 10px; border-radius:4px; font-size:12px; cursor:pointer; border:1px solid var(--border);
+  background:transparent; color:var(--text2); transition:.2s;
+}
+.feedback-bar button:hover { border-color:var(--accent); color:var(--accent); }
+.feedback-bar button.active-good { background:rgba(16,185,129,.15); border-color:var(--accent); color:var(--accent); }
+.feedback-bar button.active-bad { background:rgba(239,68,68,.15); border-color:var(--danger); color:var(--danger); }
+.feedback-bar .feedback-note { font-size:11px; color:var(--text2); margin-left:auto; }
+.feedback-bar textarea {
+  width:100%; min-height:44px; background:#151515; border:1px solid var(--border); border-radius:6px;
+  color:var(--text); padding:6px 8px; font-size:12px; font-family:inherit; resize:vertical; outline:none;
+}
+.feedback-bar textarea:focus { border-color: var(--accent); }
+.edited-tag { font-size:11px; color:var(--warn); margin-top:6px; }
+
+/* ── 统计徽标 ── */
+.stat-badge {
+  font-size:10px; background:rgba(16,185,129,.15); color:var(--accent); padding:2px 6px; border-radius:10px;
+}
+
+.segment {
+  background:var(--panel); border:1px solid var(--border); border-radius:var(--radius);
+  padding:14px 16px; margin-bottom:12px; display:none;
+}
+.segment.active { display:block; }
+.segment-title {
+  font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:1px;
+  color:var(--accent); margin-bottom:8px;
+}
+.segment .item { margin-bottom:6px; font-size:13px; line-height:1.6; }
+.segment .item .label { color: var(--text2); }
+.segment .item .value { color: var(--text); }
+
+.segment .draft-box {
+  background:#0d1f17; border:1px solid var(--accent2); border-radius:8px; padding:12px 14px;
+  font-size:14px; line-height:1.9; color:#d1fae5;
+}
+.segment .warn-label {
+  display:inline-block; background:rgba(245,158,11,.15); color:var(--warn);
+  padding:2px 8px; border-radius:4px; font-size:12px; margin:3px 2px;
+}
+.segment .dang-label {
+  display:inline-block; background:rgba(239,68,68,.15); color:var(--danger);
+  padding:2px 8px; border-radius:4px; font-size:12px; margin:3px 2px;
+}
+.segment .info-label {
+  display:inline-block; background:rgba(16,185,129,.12); color:var(--accent);
+  padding:2px 8px; border-radius:4px; font-size:12px; margin:3px 2px;
+}
+
+/* ── 顶部工具栏 ── */
+.toolbar {
+  display:flex; align-items:center; padding:8px 16px; gap:8px;
+  border-bottom: 1px solid var(--border); background:var(--panel); flex-wrap:wrap;
+}
+.toolbar .title { font-weight:700; font-size:13px; flex:1; }
+.toolbar button {
+  padding:5px 12px; border-radius:6px; font-size:12px; cursor:pointer; border:1px solid var(--border);
+  background:#252525; color:var(--text); transition:.2s;
+}
+.toolbar button:hover { border-color:var(--accent); }
+.toolbar button.accent { background:var(--accent); color:#000; border-color:var(--accent); }
+.model-select {
+  padding:5px 8px; border-radius:6px; font-size:12px; border:1px solid var(--border);
+  background:#252525; color:var(--text); max-width:150px;
+}
+
+/* ── 设置弹窗 ── */
+.modal-overlay {
+  position:fixed; inset:0; background:rgba(0,0,0,.7); z-index:100;
+  display:flex; align-items:center; justify-content:center; display:none;
+}
+.modal-overlay.show { display:flex; }
+.modal {
+  background:var(--panel); border:1px solid var(--border); border-radius:12px;
+  padding:24px; width:480px; max-width:90vw; max-height:85vh; overflow-y:auto;
+}
+.modal h3 { font-size:16px; margin-bottom:16px; }
+.modal label { display:block; font-size:12px; color:var(--text2); margin-bottom:4px; margin-top:12px; }
+.modal input, .modal textarea, .modal select {
+  width:100%; background:#252525; border:1px solid var(--border); border-radius:6px;
+  color:var(--text); padding:8px 10px; font-size:13px; font-family:inherit; outline:none;
+}
+.modal textarea { min-height:100px; resize:vertical; }
+.modal input:focus, .modal textarea:focus { border-color:var(--accent); }
+.modal .btns { display:flex; gap:8px; justify-content:flex-end; margin-top:18px; }
+.modal .btns button {
+  padding:7px 16px; border-radius:6px; font-size:13px; cursor:pointer; border:none;
+}
+.modal .btns .save { background:var(--accent); color:#000; }
+.modal .btns .cancel { background:#333; color:var(--text); }
+.model-list-box { border:1px solid var(--border); border-radius:8px; padding:8px; max-height:160px; overflow-y:auto; font-size:12px; color:var(--text2); }
+.model-row { display:flex; align-items:center; gap:6px; padding:5px 0; border-bottom:1px solid var(--border); flex-wrap:wrap; color:var(--text); }
+.model-row:last-child { border-bottom:none; }
+.model-form-box { margin-top:8px; padding:10px; background:#141414; border-radius:8px; }
+
+/* ── 密码锁 ── */
+.lock-overlay {
+  position:fixed; inset:0; background:var(--bg); z-index:1000;
+  display:flex; align-items:center; justify-content:center; flex-direction:column; gap:16px;
+}
+.lock-overlay .lock-box {
+  background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:32px;
+  width:300px; max-width:90vw; text-align:center;
+}
+.lock-overlay .lock-icon { font-size:36px; margin-bottom:8px; }
+.lock-overlay h3 { font-size:16px; margin-bottom:16px; }
+.lock-overlay input {
+  width:100%; background:#252525; border:1px solid var(--border); border-radius:8px;
+  color:var(--text); padding:10px 12px; font-size:14px; text-align:center; outline:none; letter-spacing:2px;
+}
+.lock-overlay input:focus { border-color:var(--accent); }
+.lock-overlay button {
+  width:100%; margin-top:12px; padding:10px; border-radius:8px; border:none;
+  background:var(--accent); color:#000; font-size:14px; font-weight:600; cursor:pointer;
+}
+.lock-overlay button:hover { background:var(--accent2); }
+.lock-overlay .lock-err { color:var(--danger); font-size:12px; margin-top:8px; min-height:16px; }
+
+/* ── 响应式 ── */
+@media (max-width: 860px) {
+  .app { flex-direction:column; }
+  .sidebar-toggle { display:inline-block; }
+  .session-panel {
+    position:fixed; left:0; top:0; bottom:0; z-index:150; width:75vw; max-width:280px;
+    transform:translateX(-100%); transition:.2s;
+  }
+  .session-panel.show { transform:translateX(0); box-shadow:4px 0 16px rgba(0,0,0,.5); }
+  .chat-panel { width:100%; min-width:0; height:55%; }
+  .analysis-panel { min-width:0; height:45%; }
+  .chat-panel { border-right:none; border-bottom:1px solid var(--border); }
+}
+</style>
+</head>
+<body>
+
+<div class="lock-overlay" id="lockOverlay" style="display:none">
+  <div class="lock-box">
+    <div class="lock-icon">🔒</div>
+    <h3>请输入访问密码</h3>
+    <input type="password" id="lockPasswordInput" placeholder="密码" autocomplete="off" onkeydown="if(event.key==='Enter')trySubmitPassword();">
+    <button onclick="trySubmitPassword()">进入</button>
+    <div class="lock-err" id="lockErr"></div>
+  </div>
+</div>
+
+<div class="app">
+  <!-- ═══════════ 对话列表面板 ═══════════ -->
+  <div class="session-panel" id="sessionPanel">
+    <div class="session-header">
+      <span class="title">对话记录</span>
+      <button class="new-btn" onclick="createSession()">＋ 新建</button>
+    </div>
+    <div class="session-list" id="sessionList"></div>
+  </div>
+
+  <!-- ═══════════ 聊天面板 ═══════════ -->
+  <div class="chat-panel">
+    <div class="toolbar">
+      <button class="sidebar-toggle" onclick="document.getElementById('sessionPanel').classList.toggle('show')">☰</button>
+      <span class="title">💬 绿煌老周 V4.0</span>
+      <select id="modelSelect" class="model-select" onchange="onModelSelectChange()" title="当前使用的模型"></select>
+      <span class="stat-badge" id="statBadge" style="display:none"></span>
+      <button onclick="exportData()">📥 导出数据</button>
+      <button onclick="openStats()">📊 统计</button>
+      <button class="accent" onclick="openSettings()">⚙ 设置</button>
+      <button onclick="lockApp()" title="锁定，需要重新输入密码">🔒</button>
+    </div>
+    <div class="chat-header">
+      <div class="avatar">林</div>
+      <div class="info">
+        <div class="name">周杨</div>
+        <div class="status"><span class="dot"></span>在线 · Co-pilot 模式</div>
+      </div>
+    </div>
+    <div class="chat-msgs" id="chatMsgs">
+      <div class="chat-bubble system-msg">客户消息将在此展示，智能体在右侧输出分析报告</div>
+    </div>
+    <div class="img-preview-bar" id="imgPreviewBar">
+      <img src="" alt="预览">
+      <span class="hint">截图已选择，发送后将自动识别并并入分析上下文</span>
+      <span class="remove-img" onclick="clearPendingImage()">✕</span>
+    </div>
+    <div class="chat-input-area">
+      <button class="preset-btn" onclick="insertPreset(this)" title="快捷测试">🎭</button>
+      <button class="preset-btn" onclick="document.getElementById('imgFileInput').click()" title="上传客户对话截图">🖼️</button>
+      <input type="file" id="imgFileInput" accept="image/*" style="display:none" onchange="handleImageSelect(event)">
+      <textarea id="msgInput" rows="1" placeholder="输入客户微信消息…" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg();}"></textarea>
+      <button id="sendBtn" onclick="sendMsg()">↑</button>
+    </div>
+  </div>
+
+  <!-- ═══════════ 分析面板 ═══════════ -->
+  <div class="analysis-panel">
+    <div class="analysis-tabs">
+      <button class="active" onclick="switchTab('insight')">🧠 洞察</button>
+      <button onclick="switchTab('strategy')">🎯 策略</button>
+      <button onclick="switchTab('goods')">📦 选货</button>
+      <button onclick="switchTab('draft')">✏️ 回复草稿</button>
+      <button onclick="switchTab('reminder')">⏰ 提醒</button>
+    </div>
+    <div class="analysis-content" id="analysisContent">
+      <div class="analysis-empty" id="emptyState">
+        <div class="icon">🤖</div>
+        <p>输入客户消息后，智能体将在此展示分析报告</p>
+        <p style="font-size:12px;color:#555;">支持 DeepSeek / OpenAI 兼容 API，可在右上角切换模型</p>
+      </div>
+
+      <div class="segment" id="seg-insight">
+        <div class="segment-title">【1. 客户洞察】</div>
+        <div id="seg-insight-content"></div>
+      </div>
+      <div class="segment" id="seg-strategy">
+        <div class="segment-title">【2. 策略建议】</div>
+        <div id="seg-strategy-content"></div>
+      </div>
+      <div class="segment" id="seg-goods">
+        <div class="segment-title">【3. 微购相册选货指导】</div>
+        <div id="seg-goods-content"></div>
+      </div>
+      <div class="segment" id="seg-draft">
+        <div class="segment-title" style="display:flex;align-items:center;justify-content:space-between;">
+          <span>【4. 建议回复草稿】</span>
+          <button class="preset-btn" onclick="quoteReply()" id="btnQuoteReply" title="把这条草稿记录为已发给客户的内容，保持对话连续性">📋 一键引用</button>
+        </div>
+        <div id="seg-draft-content"></div>
+        <div class="feedback-bar" id="feedbackBar" style="display:none">
+          <div class="fb-actions">
+            <button onclick="rateDraft('good')" id="btnGood">👍 好</button>
+            <button onclick="rateDraft('bad')" id="btnBad">👎 差</button>
+            <button onclick="toggleEditDraft()" id="btnEditDraft">✏️ 修改草稿</button>
+            <span class="feedback-note">反馈用于迭代优化 Prompt</span>
+          </div>
+          <textarea id="feedbackNoteInput" placeholder="评语（可选）：说说好在哪 / 差在哪…" onchange="saveFeedbackNote()"></textarea>
+        </div>
+      </div>
+      <div class="segment" id="seg-reminder">
+        <div class="segment-title">【5. 执行提醒】</div>
+        <div id="seg-reminder-content"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 设置弹窗 -->
+<div class="modal-overlay" id="settingsModal">
+  <div class="modal">
+    <h3>⚙ 设置</h3>
+
+    <label>模型管理（可添加多个，随时在顶部工具栏切换）</label>
+    <div class="model-list-box" id="modelListBox"></div>
+    <div style="display:flex;gap:6px;margin-top:8px;">
+      <select id="presetSelect" style="flex:1;width:auto;">
+        <option value="">快速添加供应商…</option>
+        <option value="deepseek">DeepSeek（v4-flash，快/省）</option>
+        <option value="deepseekpro">DeepSeek Pro（v4-pro，强）</option>
+        <option value="qwen">通义千问（DashScope兼容模式）</option>
+        <option value="kimi">Kimi K2.6（支持看图，长上下文）</option>
+        <option value="glm">智谱 GLM</option>
+        <option value="openai">OpenAI（GPT-4o-mini，支持看图）</option>
+        <option value="glm4v">智谱 GLM-4V-Flash（视觉，识图，免费）</option>
+        <option value="qwenvl">通义千问VL（视觉，识图）</option>
+      </select>
+      <button class="preset-btn" onclick="applyPreset()">带入下方表单</button>
+    </div>
+    <div class="model-form-box">
+      <input id="mfName" placeholder="名称，如 DeepSeek">
+      <input id="mfEndpoint" placeholder="接口地址 https://xxx/v1/chat/completions" style="margin-top:6px;">
+      <input id="mfKey" type="password" placeholder="API Key" style="margin-top:6px;">
+      <input id="mfModel" placeholder="模型名，如 deepseek-chat" style="margin-top:6px;">
+      <label style="display:flex;align-items:center;gap:6px;margin-top:8px;font-size:12px;color:var(--text2);">
+        <input type="checkbox" id="mfVision" style="width:auto;"> 支持图片识别（用于截图上传功能）
+      </label>
+      <button class="preset-btn" style="margin-top:8px;" onclick="addModel()">＋ 添加到列表</button>
+    </div>
+
+    <label>System Prompt（可编辑）</label>
+    <textarea id="cfgPrompt" placeholder="粘贴 System Prompt…"></textarea>
+    <label>客户场景预设（可选，模拟历史对话上下文）</label>
+    <textarea id="cfgContext" placeholder="客户称呼: 王姐&#10;圈口: 55&#10;预算: 5000-8000&#10;来源: 自然流&#10;阶段: S1"></textarea>
+    <label>数据收集端点（可选填写，用于自动上报反馈数据到你的服务器）</label>
+    <input id="cfgWebhook" placeholder="https://xxx.com/api/feedback">
+    <p style="font-size:11px;color:#666;margin-top:2px;">所有对话默认存本机浏览器（点击「导出数据」可一次性导出全部对话）。配置 Webhook 后每次评分会额外自动 POST 到该地址。</p>
+    <div class="btns">
+      <button class="cancel" onclick="closeSettings()">取消</button>
+      <button class="save" onclick="saveSettings()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 统计弹窗 -->
+<div class="modal-overlay" id="statsModal">
+  <div class="modal">
+    <h3>📊 使用数据</h3>
+    <div id="statsContent" style="font-size:13px;line-height:1.8;"></div>
+    <div class="btns">
+      <button class="cancel" onclick="document.getElementById('statsModal').classList.remove('show')">关闭</button>
+      <button class="save" onclick="exportData()">📥 导出全部数据</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── 默认 System Prompt（V4.0 · KB01-KB19 全量版） ──
+const DEFAULT_PROMPT = `# 绿煌老周翡翠私域销售 AI 副驾驶 V4.0（KB01-KB19 全量版）
+
+你是绿煌珠宝（老周 周杨）私域销售团队的 AI 副驾驶。
+销售人员把客户消息粘贴给你，你的输出是给销售人员/助理看的内部分析报告。
+你不是在跟客户对话，你是在帮销售人员写可直接复制发送的回复草稿。
+
+---
+
+## 一、零级规则（最高优先级，任何情况不可违反）
+- 禁止虚构信息（货品质量、库存、最低价）
+- 禁止无法兑现的承诺（稳赚升值、绝对满意）
+- 禁止违反售后边界（先货后款、试戴退货）
+- 禁止引导向未确认账户付款
+- 禁止预设客户心理（"你现在心里…"→改为"很多人第一次…"）
+- 禁止向未成年人推进成交
+- 绝对禁止词汇：亲亲、家人们、宝、老板娘、这边有、咱们这边、咱家、安排、性价比高、品质有保障、您好、感谢咨询、第一第二第三（列编号）
+
+---
+
+## 二、客户意图分类（7类，每次必选1类）
+
+| 意图 | 判断依据 | 触发知识库 |
+|-----|--------|----------|
+| A 初次接触/破冰 | 新客户第一条消息，或沉默后第一次开口 | KB02开场白、KB03破冰分流、KB13信任建立、KB19人设 |
+| B 问货品/品质 | 问种水色工净、真假、两件货对比、"好不好" | KB08产品知识、KB11场景话术、KB14鉴定 |
+| C 问价格/比价 | 直接问价、嫌贵、拿别家价格来比 | KB09价格区间、KB04认知重建、KB12高频问答 |
+| D 推荐/报价 | 需求已明确，等推荐；问送礼/题材/寓意 | KB05报价策略、KB10题材寓意、KB16客群矩阵 |
+| E 异议/拖延 | "考虑一下""太贵了""问问老公"等情绪拖延 | KB06异议处理、KB18价格谈判、KB12高频问答 |
+| F 临门成交 | 问圈口/发货/付款/留货，反复提同一件货 | KB15成交临门一脚、KB07收款 |
+| G 收款/售后/定制 | 付款、发货、退货、定制进度 | KB07收款售后、KB17定制 |
+
+多意图同时出现时，优先处理阻碍成交的（异议 > 价格 > 货品）。
+
+---
+
+## 三、语言规则
+
+### 必须做到
+- 先接话头再延伸（客户说A，先回A再延伸，不能跳过去）
+- 用客户自己的词汇（客户说"透透的绿"，草稿不出现"高冰阳绿"）
+- 念出来像真人（在脑子里念一遍，听着不像机器说的才发）
+- 每条回复只传递1-2个核心点
+- 第一人称用"我"，不用"我们这边"
+- 结尾用问题或行动引导，不让对话停在自己这边
+- 长度：普通消息1-3段，每段1-2句，200字以内
+
+### 绝对禁止（出现即重写）
+| 禁止 | 替代方向 |
+|-----|--------|
+| 亲亲、家人们、宝 | 直接说话，不需要称呼 |
+| 您好、感谢咨询 | 直接进入内容 |
+| 这边有、咱们这边、安排 | "我这里有"或直接说事 |
+| 品质有保障、性价比高 | 用具体事实代替空洞承诺 |
+| 预设客户心理 | 改为"很多人第一次…" |
+| 第一、第二、第三（编号） | 用自然段落，或"一个是…另一个是…" |
+
+---
+
+## 四、内嵌知识库（KB01–KB19）
+
+### 【KB01 客户分层】
+7级意向标签（备注格式：意向级-预算-品类-状态-日期）：
+- A级：明确需求+预算匹配+有互动 → 当天必须推产品
+- B级：有兴趣但不急/需求模糊 → 每天1次价值触达
+- C级：加微后不说话 → 3次标准破冰链
+- D级：已报价未成交 → 按72小时跟进表
+- E级：已成交鉴赏期内 → 执行售后SOP
+- F级：已成交稳定客户 → 复购触发机制
+- G级：已流失/长期沉默 → 不再主动，等客户开口
+- H级：无需求纯粉丝 → 感谢支持，询问有无翡翠兴趣
+
+### 【KB02 开场白 · 5个版本】
+1. 通用型（推荐首选）："你好，我是老周，感谢加微信。请问是想了解翡翠，还是有什么具体想问的呢？"
+2. 价值型（有货品期待）："你好，感谢关注！视频里看上了哪件，发图给我确认一下，我让助理跟你说详情。"
+3. 直球型（后台已聊过）："你好，我是老周本人，后台看到你问过[问题]，这边和你说一下…"
+4. 轻撩型（犹豫者）："哈哈你终于加微信了，犹豫挺久的吧？"
+5. 熟人型（老客介绍）："[介绍人]跟我说了你，她在这里买过[件]，一直戴着呢。你是什么需求？"
+
+### 【KB03 破冰分流 · 场景路由】
+| 客户开口 | 处理方向 |
+|---------|--------|
+| "好久了""终于加到你""你真好" | 接认可感，引入翡翠兴趣 |
+| "看看翡翠""有什么好货" | 先画像："手镯/挂件？自用/送人？" |
+| 带具体需求（"手镯""牌子""飘花"） | 直接跟进需求细节 |
+| "多少钱""最便宜多少" | "告诉我类型和预算，我推最合适的" |
+| 买来送礼 | 问接收者情况→题材推荐 |
+| "翡翠是真的吗""货是借的" | 不辩解，给可验证的具体事实 |
+| 加了不说话 | 3次破冰链（见下），3次无回复→降G级 |
+| 发语音 | 坚持文字，整理后确认需求 |
+| "上次买了假的/买贵了" | 先给鉴别方法（价值），不急推销 |
+
+沉默3次破冰链：
+- 第1次（5分钟内）："你好，感谢关注！有翡翠相关的问题随时找我～"
+- 第2次（4-6小时）："工厂刚到一批新货，让助理拍了些图片分享给你欣赏，就当养养眼。"（附图，不推销）
+- 第3次（次日）："很多朋友加了也不说话哈哈，不知道你具体找我什么事。什么时候想挑一件了随时找我。"
+
+### 【KB04 认知重建 · 价格错配处理】
+- "直播间500有冰飘花" → "两件都叫冰飘花，差的不是名字，是料子。你把手电筒贴着那只打光，看不到清晰棉絮结构，基本是料子极薄或充胶。"
+- "你比别家贵" → "我们报价里含：产地直采料、工厂加工、国家证书、48h鉴赏。你比的那家是否包含这几项，各项对比才公平。"
+- "买不起"（自我设限） → 推入门款（糯种挂件1500起），同时建议不勉强
+
+### 【KB05 报价策略】
+- 一次推2-3件（1件显货少，4件以上眼花缭乱）
+- 三明治报价：价值重申 → 价格 → 行动钩子
+- 钩子类型：稀缺（孤品/只剩一件）、时间（今晚截单）、风控（我帮你把价格锁住）、活动
+- 72小时跟进：0分钟带钩子→30分钟价值轻触→2-3小时侧面轻推→当晚8-10点黄金收网→次日开新话题→次日下午战略撤退
+
+### 【KB06 异议处理（情绪型/态度模糊）】
+注：客户情绪拖延/态度模糊用KB06；客户明确开口讲价/说目标价→用KB18
+
+- "考虑一下"：先把"考虑"翻译成具体的事（价格？款式？对比？不急？），再针对分支处理
+- "太贵了"：先问心里价位→差距30%内推定制→差距过大推平价替代（不直接降价）
+- "老公说贵/不让买"："你让他看一下实物视频，很多家属看了实物比你还更想买。"
+- "去瑞丽实地看"：支持并欢迎，同时用KB13稳住信任
+
+### 【KB07 收款售后定制】
+- 成品48h鉴赏期：快递签收起算（不是发货日），原样退（非质量问题邮费自付）
+- 定制不退：开工前第一句必须说清楚，选料确认后才开工
+- 到账流程：支付宝/微信 → 截图确认 → 开单据 → 当天发货（次日早9点截）
+- 先货后款/试戴：明确礼貌拒绝，"这是我定的规矩，不是针对谁，所有人一样"
+- 付款后：立刻确认收款，告知证书2-3天，发货前拍自然光视频留底
+
+### 【KB08 产品知识 · 五维鉴评】
+- 种（透明度）：玻璃种 > 高冰 > 冰种 > 糯冰 > 糯种 > 豆种
+- 水（水头深度）：10分水 > 3-5分水 > 1-2分水 > 干
+- 色（颜色价值）：帝王绿 > 阳绿 > 晴水/蓝水 > 飘花 > 紫罗兰 > 墨翠 > 白底阳绿 > 黄翡/红翡
+- 工（雕工）：大师级 > 精工 > 普工 > 粗工（繁复雕工常掩盖瑕疵，推荐简约工）
+- 净（净度）：无瑕 > 微瑕 > 有瑕（棉是天然特征≠瑕疵；裂纹才影响价值）
+
+解释要点：
+- 棉："点状棉=雪花棉，天然包裹体，A货特征；网状纹=充胶痕迹，B货特征"
+- 灯光差异："室内暖光偏暖，自然光才最真实；收到货拿到窗边看"
+- 对零知识客户：种=透明度，水=光能穿多深，色=颜色，三个里面种>水>色最重要
+
+### 【KB09 价格区间 · 参考数据（报价必须来自此表）】
+手镯（标准57圈口）：
+- 豆种：300-1,500元
+- 糯种：1,000-3万元
+- 糯冰：1.5-10万元
+- 冰种：6-30万元
+- 高冰：15-80万元
+- 玻璃种：40万元+
+
+挂件/吊坠：
+- 入门（豆种/糯）：150-1,500元
+- 糯冰：2,000-1万元
+- 冰种：8,000-5万元
+- 高冰：3-30万元
+
+注意：直播间500的"冰飘花"属豆种/B货风险区间；真冰飘花挂件起步≥8,000，手镯起步≥10万。价格数字必须来自此表，禁止自行编造。
+
+### 【KB10 题材寓意 · 速查】
+| 场景 | 推荐题材 | 寓意说明 |
+|-----|--------|--------|
+| 自用/日常 | 平安扣、叶子、手镯、无事牌 | 平安、事业、圆满 |
+| 送妈妈 | 手镯、佛公、观音、如意 | 长辈最有分量的礼 |
+| 送老婆 | 手镯、飘花挂件 | 心意+颜值 |
+| 招财 | 葫芦（福禄）、貔貅（聚财只进不出）、金蟾、白菜（百财） | |
+| 送孩子 | 平安锁、小挂件 | 锁住平安 |
+| 送领导/商务 | 无事牌、山水牌、关公 | 沉稳不失分量 |
+| 新婚 | 龙凤牌（龙凤呈祥）、福豆、莲蓬 | |
+| 寿礼 | 如意、寿桃、花生（长生多福）、莲蓬 | |
+| 男款 | 墨翠、无事牌、貔貅、山水牌 | |
+| 佛道 | 佛公（笑口常开，女戴）、观音（男戴）、关公（武财神） | |
+
+紫罗兰注意："十紫九木"，真正高种紫罗兰稀少且贵，普通紫罗兰性价比不高，建议客户谨慎。
+
+### 【KB11 场景话术精华】
+- 向零基础客户介绍种水色："种是透明度，种越老越透；水是光能穿进去多深；色是颜色，绿色最值钱。三个里面种>水>色最重要，同价位买种老的准没错。"
+- 解释棉："有棉正常，棉是翡翠天然生长时包裹的矿物质，叫雪花棉。你看棉分布均匀、点状，打灯有棉絮感，这是A货特征。"
+- 男士款推荐："男士翡翠推3类：墨翠（墨绿低调有气质）、无事牌（商务送礼很合适）、貔貅（招财寓意好）。预算大一点可以看圆条手镯或龙牌。"
+- 传家话术："好的翡翠越戴越润，这件糯冰种老水好，戴20年也不会失水，传给下一代都没问题，这是翡翠的价值所在。"
+
+### 【KB12 高频问题问答】
+- "能保值吗？"："顶级料历史走势向上，但保值前提是买价合理，不能买贵了再期待升值。我们矿区直采，中间环节少，买价本身不虚高。"
+- "网上/直播间便宜很多"："两件都叫冰飘花，差的是料子。你把手机手电筒贴着那只打光，看不到清晰棉絮结构，大概率是充胶或料子极薄。"
+- "证书是假的怎么办"："证书编号可以在NGTC/GIC官网直接查，假一赔十。你收到货第一件事拿手机查证书编号，2分钟的事。"
+- "你是真的老周吗？"："是我本人微信，网上确实有很多人冒用我的身份欺骗粉丝，购买涉及转账一定要核实清楚，你放心聊就行，有什么想问的直接说。"
+- "帮我挑一个"："先告诉我：自用还是送人？手镯/挂件/没想好？心里大概什么价位区间？三个问题你回答了我马上给你推方案。"
+
+### 【KB13 信任建立】
+货源背书（源头直采）："我常年在缅甸矿区一线收料，仰光公盘的标料我亲自去打价，源头拿料，中间环节少，来货价格透明。"
+专业背书（懂料·相玉）："翡翠原石鉴定、毛料定价是我的老本行，赌石相玉这块做了十几年，看料的底子扎实，什么料值什么价我心里有数。"
+经历背书（公盘·业内）："2019到2021连续三年在曼德勒公盘做客座教授，早年跟'翡翠皇帝'摩侬先生一起做料，标涨的案例做过不少。"
+主动提顾虑（建立专业感）："先给你看自然光下的视频，这里有两个极小的棉丝点，这是天然A货的特征，不是瑕疵，反而证明它是真的。"
+
+沉睡客户激活（老客户，每月不超过1次）：
+"从缅甸到了批新料，切出来几块特别漂亮，第一反应就想到了你，知道你一直喜欢[类型]。随手拍了两张你先看看，就当养养眼。"
+
+### 【KB14 鉴定与保养】
+A货鉴别：颜色有色根（由内渗透），打灯棉絮感，光泽温润，敲击声清脆
+B货鉴别：打灯网状纹（充胶痕迹），光泽发蜡，紫外灯下蓝白荧光
+证书查验：NGTC/GIC/GTC均权威，必须写"翡翠"字样+CMA认证标志，编号可在官网输入查询
+保养：常戴常润（人体油脂天然保养），避免磕碰，避免化学品（香水/清洁剂），软布存放，不用超声波清洗
+
+### 【KB15 成交临门一脚】
+买单信号识别：问圈口、问发货时间、问付款方式、说"能不能留货"、发截图给家人、反复提同一件货
+成交话术：
+- 不问"买不买"，替客户做决定："我让助理帮你做个订单，等一下。"
+- 二选一代替要不要："你觉得A还是B更适合你？"
+- 留货话术："这件我先给你留24小时，今晚你决定就行，超过了我就放出去了。"
+- 稀缺触发："这个圈口的这种料子，工厂目前就这一件，你决定了就跟我说。"
+成交后立刻进付款流程，不留反悔窗口。
+
+### 【KB16 客群推荐矩阵】
+自用女性：年轻(20-35)推飘花挂件/晴水/糯冰小叶子；中年(35-55)推糯冰/冰种手镯/佛公；长辈(55+)手镯为首选/佛公/观音/如意
+自用男性：年轻推墨翠/无事牌/小貔貅；商务推山水牌/无事牌/大圆条手镯；求财推貔貅
+送礼：妈妈→手镯/佛公/如意 | 老婆→手镯/飘花 | 孩子→平安锁/小挂件 | 领导→无事牌/山水牌 | 新婚→龙凤/福豆
+
+### 【KB17 定制业务转化】
+6个转化时机：圈口特殊/成品没有心动的/预算高求独特/没有想要题材/嫌成品贵/送礼想有纪念意义
+核心优势："同预算料子更好；完全定制，世界上独一件；你参与选料的过程本身就是体验。"
+5步流程：①引出定制话题→②优势对比（同价位展示料子vs成品）→③降低门槛（"只需定金锁料"）→④视频看料（发3-5个原料视频）→⑤文字确认（"你选了这块料，[描述]，[尺寸]，[题材]，我们确认后开单"）
+定制不退：开工前第一句必须说清楚，开工后不退不换
+
+### 【KB18 价格谈判与让步策略】
+触发条件：客户明确说出目标价、直接要求降价、说"再便宜一点"（区别于KB06的情绪拖延）
+
+三步让价法：
+- 第一步，去加工费："这条工费本来含在里面，我问一下厂里能不能帮你省这块……好消息是可以少[X]，其他真的到底了。"
+- 第二步，粉丝价："你是从视频来的，我给你一个不外露的价格，比标价少[X]，仅此一次不开先例。"
+- 第三步，情感牌+交换条件："我真的已经不挣钱了，就当交个朋友。一个条件：收到货拍几张戴上的照片发我，我发视频用。"
+
+让价三禁忌：不无缘由让价（每次让价必须给理由）；不说"最低价了"（说了再让显水分大）；不一口回绝（"不行"会关闭对话）
+
+报价后沉默处理："是价格不合适，还是款式没找到想要的？告诉我，我看看能不能再帮你找找。"
+
+### 【KB19 人设IP · 周杨/老周（背景资料，按需提取1-2点）】
+核心档案（事实，不是脚本）：
+- 姓名：周杨，业内都叫老周 | 重庆人，1990年生
+- 身份：绿煌珠宝合伙人 | 首席翡翠原石鉴定师 | 缅甸仰光公盘标料决策人 | 翡翠毛料定价师
+- 专长：常年深入缅甸矿区一线收毛料，公盘标料亲自打价；原石鉴定、相玉、风控把关是看家本事，尤其色料打价底子扎实
+- 经历：2019—2021连续三年任曼德勒公盘客座教授；早年跟"翡翠皇帝"摩侬先生共事数年，标涨案例颇多，业内有口碑
+
+触发时机：客户问"你是谁""做多久了""懂不懂料""货从哪来""公司是真的吗"；或信任建立/异议处理需要背书
+
+使用原则：
+- 只提取与当前对话最相关的1-2个事实，自然融入，不整段背
+- 突出"源头懂料、亲自相玉打价"的专业信任，而不是流量/名气
+- 检验标准：读出来像老周聊天顺口说的，不像在做自我介绍
+- 背书服务于当下那句话，不单独成段出现
+- 禁止：整段复制档案、一次堆多个事实、无关背景时主动介绍
+
+---
+
+## 五、特殊场景规则
+
+### 客户信息不足
+无法判断意图（如"在吗""你好"）→ 按意图A处理，调KB03 → 在【5.执行提醒】中标注"信息不足，建议销售补充：客户是新客还是已聊过？"
+
+### 货品信息缺失
+草稿中有货品描述时用[货品描述]占位，在【5.执行提醒】中提示销售填入实际种水色信息
+
+### 客户情绪激动（投诉/被坑/强烈不满）
+第一句必须是情绪接纳，不推产品，不解释成本，不争辩。参考KB03场景I（质疑型）和场景L（被坑型）。
+
+### 涉及账号真实性
+使用KB12答案，并在【5.执行提醒】中提醒销售检查是否有人冒充。
+
+### 法律威胁/人身威胁
+最高优先级，不生成草稿，在【5.执行提醒】标注"⚠ 需人工升级处理"。
+
+---
+
+## 六、自检（输出前必过）
+- 草稿第一句接住了客户说的内容，没有跳过
+- 没有用客户没用过的专业词汇
+- 念一遍听起来像真人发的微信
+- 没有出现禁止词汇列表中的任何一项
+- 长度在200字以内（特殊情况除外）
+- 结尾有引导下一步的动作或问题
+- 价格数字来自KB09，没有自行编造
+- 货品品质描述来自KB08，没有夸大
+
+---
+
+## 七、输出格式（五段式分析报告）
+
+每次收到客户消息，严格按以下格式输出：
+
+═══════════════════════════════════════
+【1. 客户洞察】
+  - 心理状态：
+  - 意图类型：[A/B/C/D/E/F/G]
+  - 经验水平：[零知识/有基础/懂行/同行]
+  - 性格调性：[务实/感性/懂行/依赖/情绪]
+  - 信任程度：[高/中/低/未建立]
+  - 当前卡点：[价格/信任/需求模糊/情绪/决策犹豫/无]
+  - 风险信号：[无/冲动/未成年/疑似同行/售后隐患]
+  - 持久信息：[称呼]|[圈口]|[预算]|[已看货品]|[阶段]|[来源]
+
+【2. 策略建议】
+  - 调用知识：[KB编号 + 具体场景]
+  - 当前阶段：[S0引流/S1首咨/S2需确/S3货比/S4谈价/S5成交/S6发货/S7收货/S8售后]
+  - 本轮核心策略：（一句话）
+  - 下一步目标：
+  - ⚠ 特殊处理：[无/人工升级/情绪优先]
+
+【3. 选货指导】
+  （本轮无需选货时标注「本轮无需选货」）
+  - 推荐方向：[品类/种水/预算/题材]
+  - 排除条件：
+  - 助理待办：
+
+【4. 建议回复草稿】
+  ┌─[审核后发送]─────────────────┐
+  │ [可直接复制发送的微信回复]         │
+  └────────────────────────────────┘
+
+【5. 执行提醒】
+  - 助理动作：
+  - 跟进节点：
+  - 风险预警：[无/...]
+═══════════════════════════════════════`;
+
+// ── 预设场景 ──
+const PRESET_SCENARIOS = [
+  // A 初次接触/破冰
+  { label:'粉丝加微', msg:'老周你好，关注你好久了，终于加了微信。' },
+  { label:'沉默型新客', msg:'（刚加好友，对方未发任何消息，已过5分钟）' },
+  { label:'质疑型', msg:'你的翡翠是真的吗？视频里的货是借来拍的吧？' },
+  { label:'被坑过', msg:'我之前在别的地方买了一条翡翠，后来朋友说是B货，被骗了挺多钱的。' },
+  // B 问货品/品质
+  { label:'冰种vs糯冰', msg:'冰种和糯冰有什么区别？哪个更好？' },
+  { label:'专业客户', msg:'我看你这只是糯冰偏冰，底子还行，但条形偏薄，绿有点散，这种在我们行内大概就是中千的东西' },
+  { label:'问有没有棉', msg:'这条手镯打灯有棉，这是不是有问题？' },
+  // C 问价格/比价
+  { label:'广告流询价', msg:'手镯多少钱' },
+  { label:'直播间对比', msg:'我看人家直播间冰飘花才卖五百块，一样的' },
+  { label:'预算不符', msg:'我想找一条冰飘花手镯，预算2000左右，55圈口' },
+  // D 推荐/报价
+  { label:'带需求咨询', msg:'55圈口，想找一条素雅的手镯，预算五千左右。' },
+  { label:'送礼需求', msg:'母亲节快到了，我想给我妈买一条手镯，她快60了，平时不怎么戴首饰' },
+  { label:'送领导', msg:'我想给我领导买一件翡翠，预算一万以内，男的，比较低调的那种' },
+  { label:'不知道选什么', msg:'我想买翡翠，但不知道选什么，你帮我推荐一下' },
+  // E 异议/拖延
+  { label:'考虑一下', msg:'好的我知道了，我考虑一下吧' },
+  { label:'太贵了', msg:'太贵了，我预算就6000你这8800，差太多了' },
+  { label:'家属反对', msg:'我老公说太贵了，不让我买' },
+  { label:'主动砍价', msg:'你这条手镯能便宜点吗，8800能不能做到7500' },
+  // F 临门成交
+  { label:'问圈口留货', msg:'这条我挺喜欢的，我是56圈口，能留给我吗，我明天再决定' },
+  { label:'成交确认', msg:'好吧那就这一条吧，我相信你老周' },
+  // G 收款/售后/定制
+  { label:'收到不满意', msg:'收到了，跟我想的不太一样，感觉没有视频里好看' },
+  { label:'退货请求', msg:'我想退，戴了一下感觉不太适合我' },
+  { label:'问定制', msg:'你们有定制吗？我圈口有点特殊，58的，成品基本找不到' },
+  { label:'法律威胁', msg:'你们这是诈骗！我已经报警了，等着传票吧！' },
+  // 信任/IP
+  { label:'问公司真实性', msg:'你们绿煌珠宝，你是合伙人是吧，这公司靠谱吗？' },
+  { label:'问背景经历', msg:'你做翡翠多久了？货源从哪里来的？' },
+];
+
+// ── 模型预设（快速添加） ──
+const MODEL_PRESETS = {
+  deepseek: { name:'DeepSeek', endpoint:'https://api.deepseek.com/chat/completions', model:'deepseek-v4-flash', vision:false },
+  deepseekpro: { name:'DeepSeek Pro', endpoint:'https://api.deepseek.com/chat/completions', model:'deepseek-v4-pro', vision:false },
+  qwen: { name:'通义千问', endpoint:'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions', model:'qwen-plus', vision:false },
+  kimi: { name:'Kimi K2.6', endpoint:'https://api.moonshot.cn/v1/chat/completions', model:'kimi-k2.6', vision:true },
+  glm: { name:'智谱GLM', endpoint:'https://open.bigmodel.cn/api/paas/v4/chat/completions', model:'glm-4', vision:false },
+  openai: { name:'OpenAI', endpoint:'https://api.openai.com/v1/chat/completions', model:'gpt-4o-mini', vision:true },
+  glm4v: { name:'智谱GLM-4V-Flash（免费）', endpoint:'https://open.bigmodel.cn/api/paas/v4/chat/completions', model:'glm-4v-flash', vision:true },
+  qwenvl: { name:'通义千问VL', endpoint:'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions', model:'qwen-vl-plus', vision:true },
+};
+
+// ── 全局状态 ──
+let models = [];
+let activeModelId = null;
+let visionModelId = null;
+
+let sessions = [];
+let currentSessionId = null;
+let currentConversation = [];
+let currentTurnRef = null;
+let pendingImage = null;
+let lastDraftText = '';
+
+let settings = {
+  prompt: localStorage.getItem('agent_prompt') || DEFAULT_PROMPT,
+  context: localStorage.getItem('agent_context') || '',
+  webhook: localStorage.getItem('agent_webhook') || '',
+};
+
+// ── 工具函数 ──
+function escapeHtml(s) {
+  return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function downloadBlob(content, type, filename) {
+  const blob = new Blob([content], { type });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+}
+
+// ── 密码锁（前端简易保护，非真安全，仅用于阻挡普通访客） ──
+const LOCK_HASH = '5d982b6caadb998df3200934962c0cceb7dc651d74104e2d11d0b55c38cfc3b8';
+async function sha256Hex(text) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+function checkLock() {
+  const saved = localStorage.getItem('agent_lock_ok');
+  if (saved === LOCK_HASH) {
+    document.getElementById('lockOverlay').style.display = 'none';
+  } else {
+    document.getElementById('lockOverlay').style.display = 'flex';
+    setTimeout(() => document.getElementById('lockPasswordInput').focus(), 50);
+  }
+}
+async function trySubmitPassword() {
+  const val = document.getElementById('lockPasswordInput').value;
+  const hash = await sha256Hex(val);
+  if (hash === LOCK_HASH) {
+    localStorage.setItem('agent_lock_ok', hash);
+    document.getElementById('lockOverlay').style.display = 'none';
+    document.getElementById('lockErr').textContent = '';
+    document.getElementById('lockPasswordInput').value = '';
+  } else {
+    document.getElementById('lockErr').textContent = '密码错误';
+    document.getElementById('lockPasswordInput').value = '';
+    document.getElementById('lockPasswordInput').focus();
+  }
+}
+function lockApp() {
+  localStorage.removeItem('agent_lock_ok');
+  checkLock();
+}
+checkLock();
+
+// ── UI 函数 ──
+function addBubble(text, sender, opts) {
+  opts = opts || {};
+  const cls = sender === 'customer' ? 'customer' : sender === 'linqiang' ? 'linqiang' : 'system-msg';
+  const meta = sender === 'customer' ? '客户' : sender === 'linqiang' ? '周杨' : '';
+  const div = document.createElement('div');
+  div.className = 'chat-bubble ' + cls;
+  if (meta) div.innerHTML = `<div class="meta">${meta}</div>`;
+  div.innerHTML += escapeHtml(text).replace(/\n/g, '<br>');
+  if (opts.imageUrl) {
+    div.innerHTML += `<img src="${opts.imageUrl}" style="max-width:180px;border-radius:8px;margin-top:6px;display:block;">`;
+  }
+  document.getElementById('chatMsgs').appendChild(div);
+  document.getElementById('chatMsgs').scrollTop = document.getElementById('chatMsgs').scrollHeight;
+}
+
+function showEmpty(show) {
+  document.getElementById('emptyState').style.display = show ? 'flex' : 'none';
+  document.querySelectorAll('.segment').forEach(s => s.classList.remove('active'));
+  if (show) document.getElementById('feedbackBar').style.display = 'none';
+}
+
+function switchTab(tab) {
+  document.querySelectorAll('.analysis-tabs button').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.segment').forEach(s => s.classList.remove('active'));
+  const btn = document.querySelector(`.analysis-tabs button[onclick="switchTab('${tab}')"]`);
+  if (btn) btn.classList.add('active');
+  const seg = document.getElementById('seg-' + tab);
+  if (seg) seg.classList.add('active');
+}
+
+function setSegment(id, content) {
+  document.getElementById(id).innerHTML = content;
+  if (id === 'seg-draft-content') {
+    const m = content.match(/<div class="draft-box">([\s\S]*?)<\/div>/);
+    lastDraftText = m ? m[1] : content.replace(/<[^>]+>/g, '');
+  }
+}
+
+function setLoading(loading) {
+  document.getElementById('sendBtn').disabled = loading;
+  document.getElementById('msgInput').disabled = loading;
+  document.getElementById('sendBtn').textContent = loading ? '…' : '↑';
+}
+
+function insertPreset(btn) {
+  const menu = document.createElement('div');
+  menu.style.cssText = 'position:fixed;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;z-index:200;max-height:300px;overflow-y:auto;min-width:180px;';
+  const rect = btn.getBoundingClientRect();
+  menu.style.left = rect.left + 'px';
+  menu.style.bottom = (window.innerHeight - rect.top + 8) + 'px';
+
+  PRESET_SCENARIOS.forEach((s) => {
+    const item = document.createElement('div');
+    item.style.cssText = 'padding:8px 14px;font-size:13px;cursor:pointer;color:#e0e0e0;';
+    item.textContent = s.label;
+    item.onmouseenter = () => item.style.background = '#2a2a2a';
+    item.onmouseleave = () => item.style.background = 'transparent';
+    item.onclick = () => {
+      document.getElementById('msgInput').value = s.msg;
+      menu.remove();
+    };
+    menu.appendChild(item);
+  });
+
+  document.body.appendChild(menu);
+  const close = (e) => { if (!menu.contains(e.target) && e.target !== btn) { menu.remove(); document.removeEventListener('click', close); } };
+  setTimeout(() => document.addEventListener('click', close), 10);
+}
+
+// ── 图片上传 ──
+function handleImageSelect(e) {
+  const file = e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+  if (!file.type.startsWith('image/')) { alert('请选择图片文件'); return; }
+  const reader = new FileReader();
+  reader.onload = () => { pendingImage = reader.result; renderImagePreview(); };
+  reader.readAsDataURL(file);
+}
+function renderImagePreview() {
+  const bar = document.getElementById('imgPreviewBar');
+  if (pendingImage) {
+    bar.classList.add('show');
+    bar.querySelector('img').src = pendingImage;
+  } else {
+    bar.classList.remove('show');
+  }
+}
+function clearPendingImage() { pendingImage = null; renderImagePreview(); }
+
+// ── 模型管理 ──
+function loadModels() {
+  models = JSON.parse(localStorage.getItem('agent_models') || '[]');
+  activeModelId = localStorage.getItem('agent_active_model_id') || (models[0] ? models[0].id : null);
+  const savedVision = localStorage.getItem('agent_vision_model_id');
+  visionModelId = savedVision || (models.find(m => m.vision) ? models.find(m => m.vision).id : null);
+}
+function persistModels() {
+  localStorage.setItem('agent_models', JSON.stringify(models));
+  localStorage.setItem('agent_active_model_id', activeModelId || '');
+  localStorage.setItem('agent_vision_model_id', visionModelId || '');
+}
+function getActiveModel() { return models.find(m => m.id === activeModelId) || models[0] || null; }
+function getVisionModel() { return models.find(m => m.id === visionModelId) || models.find(m => m.vision) || null; }
+
+function applyPreset() {
+  const k = document.getElementById('presetSelect').value;
+  if (!k) return;
+  const p = MODEL_PRESETS[k];
+  document.getElementById('mfName').value = p.name;
+  document.getElementById('mfEndpoint').value = p.endpoint;
+  document.getElementById('mfModel').value = p.model;
+  document.getElementById('mfVision').checked = p.vision;
+}
+function addModel() {
+  const name = document.getElementById('mfName').value.trim();
+  const endpoint = document.getElementById('mfEndpoint').value.trim();
+  const apiKey = document.getElementById('mfKey').value.trim();
+  const model = document.getElementById('mfModel').value.trim();
+  const vision = document.getElementById('mfVision').checked;
+  if (!name || !endpoint || !model) { alert('名称、接口地址、模型名为必填'); return; }
+  const m = { id: 'M' + Date.now(), name, endpoint, apiKey, model, vision };
+  models.push(m);
+  if (!activeModelId) activeModelId = m.id;
+  if (vision && !visionModelId) visionModelId = m.id;
+  persistModels();
+  renderModelList();
+  renderModelSelect();
+  ['mfName','mfEndpoint','mfKey','mfModel'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('mfVision').checked = false;
+  document.getElementById('presetSelect').value = '';
+}
+function deleteModel(id) {
+  models = models.filter(m => m.id !== id);
+  if (activeModelId === id) activeModelId = models[0] ? models[0].id : null;
+  if (visionModelId === id) { const v = models.find(m => m.vision); visionModelId = v ? v.id : null; }
+  persistModels();
+  renderModelList();
+  renderModelSelect();
+}
+function setActiveModel(id) { activeModelId = id; persistModels(); renderModelList(); renderModelSelect(); }
+function setVisionModel(id) { visionModelId = id; persistModels(); renderModelList(); }
+
+function renderModelList() {
+  const box = document.getElementById('modelListBox');
+  if (models.length === 0) {
+    box.textContent = '尚未添加模型，先在下方"快速添加"或手动填写表单';
+    return;
+  }
+  box.innerHTML = models.map(m => `
+    <div class="model-row">
+      <span style="flex:1;min-width:100px;">${escapeHtml(m.name)} <span style="color:#666;">(${escapeHtml(m.model)})</span>
+        ${m.vision ? '<span class="stat-badge">视觉</span>' : ''}
+        ${m.id === activeModelId ? '<span class="stat-badge">默认</span>' : ''}
+        ${m.id === visionModelId ? '<span class="stat-badge">识图默认</span>' : ''}
+      </span>
+      <button class="preset-btn" onclick="setActiveModel('${m.id}')">设为默认</button>
+      ${m.vision ? `<button class="preset-btn" onclick="setVisionModel('${m.id}')">设为识图默认</button>` : ''}
+      <button class="preset-btn" onclick="deleteModel('${m.id}')">删除</button>
+    </div>`).join('');
+}
+function renderModelSelect() {
+  const sel = document.getElementById('modelSelect');
+  if (models.length === 0) { sel.innerHTML = '<option value="">未配置模型</option>'; return; }
+  sel.innerHTML = models.map(m => `<option value="${m.id}"${m.id === activeModelId ? ' selected' : ''}>${escapeHtml(m.name)}</option>`).join('');
+}
+function onModelSelectChange() {
+  activeModelId = document.getElementById('modelSelect').value;
+  localStorage.setItem('agent_active_model_id', activeModelId || '');
+  renderModelList();
+}
+
+// ── 会话（多对话）管理 ──
+function loadSessions() {
+  sessions = JSON.parse(localStorage.getItem('agent_sessions') || '[]');
+  currentSessionId = localStorage.getItem('agent_current_session_id') || null;
+}
+function saveSessions() { localStorage.setItem('agent_sessions', JSON.stringify(sessions)); }
+function getCurrentSession() { return sessions.find(s => s.id === currentSessionId) || null; }
+
+function createSession() {
+  const s = { id: 'S' + Date.now(), title: '新对话', createdAt: Date.now(), updatedAt: Date.now(), turns: [] };
+  sessions.unshift(s);
+  currentSessionId = s.id;
+  saveSessions();
+  localStorage.setItem('agent_current_session_id', currentSessionId);
+  renderSessionList();
+  renderCurrentSession();
+  document.getElementById('sessionPanel').classList.remove('show');
+}
+function switchSession(id) {
+  currentSessionId = id;
+  localStorage.setItem('agent_current_session_id', id);
+  renderSessionList();
+  renderCurrentSession();
+  document.getElementById('sessionPanel').classList.remove('show');
+}
+function deleteSession(id, ev) {
+  ev.stopPropagation();
+  if (!confirm('删除该对话？（不可恢复）')) return;
+  sessions = sessions.filter(s => s.id !== id);
+  saveSessions();
+  if (currentSessionId === id) {
+    currentSessionId = sessions[0] ? sessions[0].id : null;
+    if (!currentSessionId) { createSession(); return; }
+    localStorage.setItem('agent_current_session_id', currentSessionId);
+  }
+  renderSessionList();
+  renderCurrentSession();
+}
+function renameSession(id, ev) {
+  ev.stopPropagation();
+  const s = sessions.find(x => x.id === id);
+  const name = prompt('对话名称', s.title);
+  if (name && name.trim()) { s.title = name.trim(); saveSessions(); renderSessionList(); }
+}
+function renderSessionList() {
+  const el = document.getElementById('sessionList');
+  el.innerHTML = '';
+  sessions.forEach(s => {
+    const row = document.createElement('div');
+    row.className = 'session-item' + (s.id === currentSessionId ? ' active' : '');
+    row.onclick = () => switchSession(s.id);
+    const t = new Date(s.updatedAt).toLocaleString('zh-CN', { month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' });
+    row.innerHTML = `<div class="session-title">${escapeHtml(s.title)}</div><div class="session-meta">${t} · ${s.turns.length}轮</div>
+      <span class="session-rename" title="重命名">✎</span><span class="session-del" title="删除">×</span>`;
+    row.querySelector('.session-rename').onclick = (e) => renameSession(s.id, e);
+    row.querySelector('.session-del').onclick = (e) => deleteSession(s.id, e);
+    el.appendChild(row);
+  });
+}
+function renderCurrentSession() {
+  const s = getCurrentSession();
+  document.getElementById('chatMsgs').innerHTML = '';
+  currentConversation = [];
+  currentTurnRef = null;
+  if (!s || s.turns.length === 0) {
+    document.getElementById('chatMsgs').innerHTML = '<div class="chat-bubble system-msg">新对话开始。输入客户消息，或点击 🎭 选预设、🖼️ 传截图。</div>';
+    showEmpty(true);
+    return;
+  }
+  s.turns.forEach((turn, idx) => {
+    addBubble(turn.customer, 'customer');
+    if (turn.imageNote) {
+      addBubble('📷 截图识别摘要：' + turn.imageNote.slice(0, 100) + (turn.imageNote.length > 100 ? '…' : ''), 'system-msg');
+    }
+    if (turn.agentOutput) {
+      addBubble('智能体分析完成 ✓', 'system-msg');
+      if (turn.sentReply) {
+        addBubble(turn.sentReply, 'linqiang');
+      } else if (idx === s.turns.length - 1) {
+        addQuoteCta();
+      }
+      currentConversation.push(turn);
+    }
+  });
+  const last = s.turns[s.turns.length - 1];
+  if (last && last.agentOutput) {
+    renderAnalysisForTurn(parseAgentOutput(last.agentOutput), last);
+  } else {
+    showEmpty(true);
+  }
+}
+function saveTurn(session, data) {
+  const turn = {
+    id: 'T' + Date.now() + Math.random().toString(36).slice(2, 6),
+    time: Date.now(),
+    customer: data.customer,
+    imageNote: data.imageNote || '',
+    agentOutput: data.agentOutput || '',
+    rating: null,
+    note: '',
+    editedDraft: '',
+    sentReply: '',
+  };
+  session.turns.push(turn);
+  session.updatedAt = Date.now();
+  if (session.turns.length === 1) session.title = (data.customer || '新对话').slice(0, 16);
+  saveSessions();
+  renderSessionList();
+  return turn;
+}
+function allTurns() {
+  const list = [];
+  sessions.forEach(s => s.turns.forEach(t => list.push(t)));
+  return list;
+}
+
+// ── 解析智能体输出 ──
+function parseAgentOutput(text) {
+  const result = { insight:'', strategy:'', goods:'', draft:'', reminder:'' };
+
+  const parts = text.split(/════════+/);
+  if (parts.length >= 2) {
+    const content = parts[1] || parts[0];
+    const sections = content.split(/【\d+\./);
+    for (const sec of sections) {
+      const trimmed = sec.trim();
+      if (trimmed.startsWith('1.') || trimmed.includes('客户洞察')) {
+        result.insight = sec.replace(/^[^】]*】?/, '').trim();
+      } else if (trimmed.startsWith('2.') || trimmed.includes('策略建议')) {
+        result.strategy = sec.replace(/^[^】]*】?/, '').trim();
+      } else if (trimmed.startsWith('3.') || trimmed.includes('选货指导')) {
+        result.goods = sec.replace(/^[^】]*】?/, '').trim();
+      } else if (trimmed.startsWith('4.') || trimmed.includes('回复草稿')) {
+        result.draft = sec.replace(/^[^】]*】?/, '').trim();
+      } else if (trimmed.startsWith('5.') || trimmed.includes('执行提醒')) {
+        result.reminder = sec.replace(/^[^】]*】?/, '').trim();
+      }
+    }
+  }
+
+  if (!result.insight && !result.strategy) {
+    const m1 = text.match(/【1[.、].*?客户洞察.*?】([\s\S]*?)(?=【2|$)/);
+    const m2 = text.match(/【2[.、].*?策略建议.*?】([\s\S]*?)(?=【3|$)/);
+    const m3 = text.match(/【3[.、].*?选货指导.*?】([\s\S]*?)(?=【4|$)/);
+    const m4 = text.match(/【4[.、].*?回复草稿.*?】([\s\S]*?)(?=【5|$)/);
+    const m5 = text.match(/【5[.、].*?提醒.*?】([\s\S]*?)$/);
+    if (m1) result.insight = m1[1].trim();
+    if (m2) result.strategy = m2[1].trim();
+    if (m3) result.goods = m3[1].trim();
+    if (m4) result.draft = m4[1].trim();
+    if (m5) result.reminder = m5[1].trim();
+  }
+
+  const draftMatch = result.draft.match(/┌─.*?┐([\s\S]*?)└─.*?┘/);
+  if (draftMatch) {
+    result.draft = draftMatch[1].replace(/│/g, '').trim();
+  }
+
+  return result;
+}
+
+function fmtItem(text) {
+  if (!text) return '<div class="item"><span class="label">（无内容）</span></div>';
+  let html = escapeHtml(text)
+    .replace(/\n/g, '<br>')
+    .replace(/⚠/g, '<span class="warn-label">⚠</span>')
+    .replace(/🚫/g, '<span class="dang-label">🚫</span>')
+    .replace(/✅/g, '<span class="info-label">✅</span>')
+    .replace(/□/g, '<span class="info-label">□</span>');
+  return '<div class="item">' + html + '</div>';
+}
+function fmtDraft(text) {
+  if (!text) return '<div class="draft-box">（无草稿内容）</div>';
+  return '<div class="draft-box">' + escapeHtml(text).replace(/\n/g, '<br>') + '</div>';
+}
+
+function renderAnalysis(parsed) {
+  setSegment('seg-insight-content', fmtItem(parsed.insight));
+  setSegment('seg-strategy-content', fmtItem(parsed.strategy));
+  setSegment('seg-goods-content', fmtItem(parsed.goods));
+  setSegment('seg-draft-content', fmtDraft(parsed.draft));
+  setSegment('seg-reminder-content', fmtItem(parsed.reminder));
+
+  showEmpty(false);
+  switchTab('insight');
+  showFeedback();
+}
+
+function renderAnalysisForTurn(parsed, turn) {
+  currentTurnRef = turn;
+  renderAnalysis(parsed);
+  document.getElementById('btnGood').classList.toggle('active-good', turn.rating === 'good');
+  document.getElementById('btnBad').classList.toggle('active-bad', turn.rating === 'bad');
+  document.getElementById('feedbackNoteInput').value = turn.note || '';
+  document.getElementById('btnQuoteReply').textContent = turn.sentReply ? '✓ 已引用' : '📋 一键引用';
+  if (turn.editedDraft) {
+    setSegment('seg-draft-content', fmtDraft(turn.editedDraft) + '<div class="edited-tag">✎ 已人工修改，将用于后续迭代</div>');
+    lastDraftText = turn.editedDraft;
+  }
+}
+
+// ── 引用回复：把草稿记为"已发送给客户的内容"，用于聊天记录展示和后续多轮上下文 ──
+function turnCustomerContext(turn) {
+  if (turn.imageNote) {
+    return turn.customer && turn.customer !== '[图片]'
+      ? turn.customer + '\n\n[截图识别内容]\n' + turn.imageNote
+      : '[截图识别内容]\n' + turn.imageNote;
+  }
+  return turn.customer;
+}
+function turnAssistantContext(turn) {
+  const reply = turn.sentReply || (turn.agentOutput ? parseAgentOutput(turn.agentOutput).draft : '');
+  return reply ? `【已回复客户】：${reply}` : (turn.agentOutput || '');
+}
+function addQuoteCta() {
+  const div = document.createElement('div');
+  div.className = 'chat-bubble linqiang quote-cta';
+  div.textContent = '📋 点击这里，把「回复草稿」记为已发给客户的内容';
+  div.onclick = () => quoteReply();
+  document.getElementById('chatMsgs').appendChild(div);
+  document.getElementById('chatMsgs').scrollTop = document.getElementById('chatMsgs').scrollHeight;
+}
+function quoteReply() {
+  if (!currentTurnRef) return;
+  const editArea = document.getElementById('draftEditArea');
+  const text = editArea ? editArea.value.trim() : lastDraftText;
+  if (!text) return;
+  currentTurnRef.sentReply = text;
+  if (editArea) currentTurnRef.editedDraft = text;
+  saveSessions();
+  renderSessionList();
+  renderCurrentSession();
+}
+
+// ── API 调用 ──
+async function callLLM(customerMsg, model) {
+  const messages = [
+    { role: 'system', content: settings.prompt || DEFAULT_PROMPT },
+  ];
+
+  if (settings.context && settings.context.trim()) {
+    messages.push({ role: 'system', content: `当前客户上下文信息：\n${settings.context}\n请基于以上信息分析以下客户消息。` });
+  }
+
+  const recentHistory = currentConversation.slice(-6);
+  for (const turn of recentHistory) {
+    messages.push({ role: 'user', content: `[客户消息]: ${turnCustomerContext(turn)}` });
+    const ctx = turnAssistantContext(turn);
+    if (ctx) messages.push({ role: 'assistant', content: ctx });
+  }
+
+  messages.push({ role: 'user', content: `[客户消息]: ${customerMsg}\n\n请按五段式格式输出完整分析报告（【1.客户洞察】【2.策略建议】【3.选货指导】【4.建议回复草稿】【5.执行提醒】）。` });
+
+  const response = await fetch(model.endpoint, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + model.apiKey,
+    },
+    body: JSON.stringify({
+      model: model.model,
+      messages: messages,
+      max_tokens: 4096,
+      stream: false,
+    }),
+  });
+
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`API 错误 (${response.status}): ${err.slice(0, 200)}`);
+  }
+
+  const data = await response.json();
+  return data.choices[0].message.content;
+}
+
+async function recognizeImage(dataUrl, extraText) {
+  const vm = getVisionModel();
+  if (!vm) throw new Error('未配置视觉模型，请在设置中添加一个支持图片识别的模型');
+  const instruction = '请识别这张微信聊天截图。用简洁文本还原：1) 对话双方说过的关键内容（按顺序）2) 客户称呼/圈口/预算等提到的信息 3) 当前对话所处场景的简要判断。不要用markdown表格，直接分点列出。';
+  const messages = [{
+    role: 'user',
+    content: [
+      { type: 'text', text: (extraText ? extraText + '\n\n' : '') + instruction },
+      { type: 'image_url', image_url: { url: dataUrl } },
+    ],
+  }];
+  const response = await fetch(vm.endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + vm.apiKey },
+    body: JSON.stringify({ model: vm.model, messages, max_tokens: 1024 }),
+  });
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`视觉识别API错误 (${response.status}): ${err.slice(0, 200)}`);
+  }
+  const data = await response.json();
+  return data.choices[0].message.content;
+}
+
+// ── 主流程 ──
+async function sendMsg() {
+  const input = document.getElementById('msgInput');
+  const msg = input.value.trim();
+  const img = pendingImage;
+  if (!msg && !img) return;
+
+  let session = getCurrentSession();
+  if (!session) { createSession(); session = getCurrentSession(); }
+
+  addBubble(msg || '（截图）', 'customer', img ? { imageUrl: img } : undefined);
+  input.value = '';
+  clearPendingImage();
+  setLoading(true);
+  showEmpty(false);
+
+  let imageNote = '';
+  if (img) {
+    addBubble('🔎 正在识别截图…', 'system-msg');
+    try {
+      imageNote = await recognizeImage(img, msg);
+      addBubble('✅ 截图识别完成，已并入分析上下文', 'system-msg');
+    } catch (e) {
+      addBubble('❌ 截图识别失败：' + e.message, 'system-msg');
+    }
+  }
+
+  const combinedMsg = imageNote
+    ? (msg ? msg + '\n\n[截图识别内容]\n' + imageNote : '[截图识别内容]\n' + imageNote)
+    : msg;
+
+  const activeModel = getActiveModel();
+  if (!activeModel) {
+    addBubble('⚠ 请先点击右上角 ⚙设置 添加一个模型（支持 DeepSeek / 通义千问 / Kimi / GLM / OpenAI 等 OpenAI 兼容接口）', 'system-msg');
+    renderDemoAnalysis(combinedMsg || msg);
+    saveTurn(session, { customer: msg || '[图片]', imageNote, agentOutput: '' });
+    setLoading(false);
+    return;
+  }
+
+  try {
+    const agentOutput = await callLLM(combinedMsg, activeModel);
+    const parsed = parseAgentOutput(agentOutput);
+    const turn = saveTurn(session, { customer: msg || '[图片]', imageNote, agentOutput });
+    currentConversation.push(turn);
+    renderAnalysisForTurn(parsed, turn);
+    addBubble('智能体分析完成 ✓ （查看右侧报告）', 'system-msg');
+    addQuoteCta();
+  } catch (e) {
+    addBubble('❌ ' + e.message, 'system-msg');
+  }
+
+  setLoading(false);
+}
+
+// ── 模拟演示模式（未配置模型时使用） ──
+function renderDemoAnalysis(msg) {
+  document.getElementById('feedbackBar').style.display = 'none';
+  currentTurnRef = null;
+
+  const isPriceQ = /多少钱|价格|报价/.test(msg);
+  const isGreeting = /关注|视频|加微信|看了/.test(msg) && !/手镯|翡翠|买/.test(msg);
+  const isNeeds = /圈口|预算|手镯|牌子|挂件|想买|找/.test(msg);
+  const isObjection = /太贵|考虑|商量|老公|老婆|不行/.test(msg);
+  const isThreat = /报警|诈骗|传票|律师/.test(msg);
+  const isExpert = /种水|底子|条形|冰种|糯种/.test(msg) && msg.length > 30;
+
+  let insight = '', strategy = '', goods = '本轮无需选货', draft = '', reminder = '';
+
+  if (isThreat) {
+    insight = `- 心理状态：客户发出法律威胁（"报警""传票""律师"），情绪已升级至对抗状态\n- 风险信号：⚠ E2 最高级告警\n- ⚠ 人工升级：E2 - 不生成回复草稿，直接移交老周本人处理`;
+    strategy = `- 触发 E2 最高优先级升级\n- 不生成任何客户可见回复\n- 建议老周本人/公司法律顾问对接`;
+    draft = '⚠ 已触发 E2 升级协议，不生成回复草稿。建议由老周本人或法律顾问处理。';
+    reminder = '- 助理动作：汇总完整聊天记录供老周参考\n- 风险预警：不要通过微信私聊继续处理';
+  } else if (isGreeting) {
+    insight = `- 心理状态：带着好感主动打招呼，"终于"说明期待已久\n- 经验水平：零知识\n- 性格调性：感性型\n- 信任程度：中高（基于长期视频关注积累）\n- 当前卡点：无\n- 持久信息：您 | [圈口未知] | [预算未知] | S0 | 自然流`;
+    strategy = `- 客户来源：自然流\n- 当前阶段：S0\n- 话术强度：L1\n- 本轮核心策略：承接关注情感，不推货，轻过渡到开放邀请\n- 下一步目标：引导表达翡翠需求或品类偏好`;
+    draft = `谢谢关注。你能加过来是缘分，以后翡翠方面的事随时可以跟我说。`;
+    reminder = '- 助理动作：无\n- 跟进节点：等待客户表达需求';
+  } else if (isExpert) {
+    insight = `- 心理状态：在展示专业度——"我懂行，你别想忽悠我"\n- 经验水平：行业相关\n- 性格调性：懂行型\n- 信任程度：低\n- 当前卡点：价格信任\n- 持久信息：[称呼] | [圈口] | [预算] | 已看货品X | S3 | 自然流`;
+    strategy = `- 客户来源：自然流\n- 当前阶段：S3\n- 话术强度：L2\n- 本轮核心策略：承认专业度→不解释基础概念→平等交流讲差异点\n- 下一步目标：建立平等信任→回到货本身`;
+    draft = `你太专业了，我很少碰到像你这样对翡翠有这么清晰认知的。这条条形确实不是厚装，这一点你看出来了，我不藏着。你应该收藏了不少好东西吧？`;
+    reminder = '- 助理动作：无\n- 跟进节点：客户回答"收藏多少"了解消费层级';
+  } else if (isObjection) {
+    insight = `- 心理状态：在犹豫，不是不喜欢，是需要外力帮过决策关\n- 当前卡点：价格/家属/决策犹豫`;
+    strategy = `- 当前阶段：S4\n- 话术强度：L3\n- 本轮核心策略：把"考虑"翻译成具体内容→给选择题→根据答复进分支`;
+    draft = `理解。你具体是在想哪个方面？是款式感觉还差那么一点点，还是价格上想再看一看？你直接说，我帮你分析。`;
+    reminder = '- 跟进节点：客户答复后进入对应分支\n- 风险预警：若打死不说原因→走战略撤退';
+  } else if (isPriceQ) {
+    insight = `- 心理状态：目的明确——我是来买东西的，不是来聊天的\n- 经验水平：零知识\n- 性格调性：务实型\n- 信任程度：未建立\n- 当前卡点：无\n- 持久信息：您 | [圈口未知] | [预算未知] | S0-AD | 广告流`;
+    strategy = `- 客户来源：广告投放流\n- 当前阶段：S0-AD\n- 话术强度：L2\n- 本轮核心策略：确认有货→解释为什么不报价→过渡需求确认`;
+    draft = `手镯有的。翡翠手镯都是独一无二的，同一个圈口不同种水价格能差几十倍，我先不跟你报个数字误导你。你先说下圈口多少、心里大概想放多少预算，选好方向我给你发自然光视频看。从我这出去的手镯都是图片视频什么样，收到手就是什么样的。`;
+    reminder = '- 助理动作：无\n- 跟进节点：客户回复圈口/预算后进入选货';
+  } else if (isNeeds) {
+    insight = `- 心理状态：已进入需求表达阶段\n- 经验水平：零知识或有基础\n- 性格调性：感性型\n- 当前卡点：需确认预算与需求是否匹配\n- 持久信息：[称呼] | [圈口] | [预算] | S1→S2 | 自然流`;
+    strategy = `- 当前阶段：S2\n- 话术强度：L2\n- 本轮核心策略：确认需求理解→给出预算段位说明→准备选货`;
+    draft = `圈口预算我都记下了。这个预算在翡翠里算是入门品质里面比较不错的位置了，能买到底子干净、平时戴出去不输面子的。我让助理去相册里找两条符合你方向的，拍自然光视频给你看。咱先看明白再定。`;
+    goods = `- 搜索方向一：55圈口 / 5000-6000 / 糯冰种底子干净偏白 / 正装厚度\n- 排除条件：底子灰暗、厚度<7mm、明显纹裂\n- 助理待办：从相册搜索下载2-3条自然光视频`;
+    reminder = '- 助理动作：按选货指导搜索微购相册\n- 跟进节点：助理反馈货品后对比分析';
+  } else {
+    insight = `- 心理状态：正常对话流程中\n- 经验水平：零知识\n- 性格调性：感性型\n- 当前卡点：无`;
+    strategy = `- 当前阶段：S1\n- 话术强度：L2\n- 本轮核心策略：接住对话→自然推进`;
+    draft = `好的，你先跟我说下你的想法，我帮你分析分析。`;
+    reminder = '- 助理动作：无';
+  }
+
+  setSegment('seg-insight-content', fmtItem(insight));
+  setSegment('seg-strategy-content', fmtItem(strategy));
+  setSegment('seg-goods-content', fmtItem(goods));
+  setSegment('seg-draft-content', fmtDraft(draft));
+  setSegment('seg-reminder-content', fmtItem(reminder));
+  showEmpty(false);
+  switchTab('insight');
+  addBubble('📋 演示模式（未配置模型）— 右侧显示模拟分析。在设置中添加模型后启用真实智能体。', 'system-msg');
+}
+
+// ── 设置 ──
+function openSettings() {
+  document.getElementById('cfgPrompt').value = settings.prompt;
+  document.getElementById('cfgContext').value = settings.context;
+  document.getElementById('cfgWebhook').value = settings.webhook;
+  renderModelList();
+  document.getElementById('settingsModal').classList.add('show');
+}
+function closeSettings() {
+  document.getElementById('settingsModal').classList.remove('show');
+}
+function saveSettings() {
+  settings.prompt = document.getElementById('cfgPrompt').value.trim();
+  settings.context = document.getElementById('cfgContext').value.trim();
+  settings.webhook = document.getElementById('cfgWebhook').value.trim();
+
+  localStorage.setItem('agent_prompt', settings.prompt);
+  localStorage.setItem('agent_context', settings.context);
+  localStorage.setItem('agent_webhook', settings.webhook);
+
+  closeSettings();
+  addBubble('✅ 设置已保存', 'system-msg');
+}
+
+// ── 反馈迭代系统 ──
+function showFeedback() {
+  document.getElementById('feedbackBar').style.display = 'flex';
+  document.getElementById('btnGood').classList.remove('active-good');
+  document.getElementById('btnBad').classList.remove('active-bad');
+  document.getElementById('feedbackNoteInput').value = '';
+}
+
+function rateDraft(rating) {
+  if (!currentTurnRef) return;
+  currentTurnRef.rating = rating;
+  saveSessions();
+  document.getElementById('btnGood').classList.toggle('active-good', rating === 'good');
+  document.getElementById('btnBad').classList.toggle('active-bad', rating === 'bad');
+  updateStats();
+
+  if (settings.webhook) {
+    const entry = {
+      time: new Date(currentTurnRef.time).toISOString(),
+      customer: currentTurnRef.customer,
+      draft: currentTurnRef.editedDraft || lastDraftText,
+      rating: rating,
+      note: currentTurnRef.note || '',
+    };
+    try {
+      fetch(settings.webhook, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(entry),
+      }).catch(() => {});
+    } catch (e) {}
+  }
+}
+
+function saveFeedbackNote() {
+  if (!currentTurnRef) return;
+  currentTurnRef.note = document.getElementById('feedbackNoteInput').value;
+  saveSessions();
+}
+
+function toggleEditDraft() {
+  const container = document.getElementById('seg-draft-content');
+  const existingBox = container.querySelector('.draft-box');
+  const currentText = existingBox ? existingBox.innerText : '';
+  container.innerHTML = `<textarea id="draftEditArea" style="width:100%;min-height:120px;background:#0d1f17;border:1px solid var(--accent2);border-radius:8px;color:#d1fae5;padding:12px 14px;font-size:14px;line-height:1.9;font-family:inherit;">${escapeHtml(currentText)}</textarea>
+    <div style="display:flex;gap:8px;margin-top:6px;">
+      <button class="preset-btn" onclick="saveEditedDraft()">💾 保存修改</button>
+      <button class="preset-btn" onclick="cancelEditDraft()">取消</button>
+    </div>`;
+}
+function saveEditedDraft() {
+  const text = document.getElementById('draftEditArea').value;
+  if (currentTurnRef) {
+    currentTurnRef.editedDraft = text;
+    saveSessions();
+  }
+  lastDraftText = text;
+  setSegment('seg-draft-content', fmtDraft(text) + '<div class="edited-tag">✎ 已人工修改，将用于后续迭代</div>');
+}
+function cancelEditDraft() {
+  setSegment('seg-draft-content', fmtDraft(lastDraftText));
+}
+
+function updateStats() {
+  const rated = allTurns().filter(t => t.rating);
+  if (rated.length === 0) { document.getElementById('statBadge').style.display = 'none'; return; }
+  const good = rated.filter(t => t.rating === 'good').length;
+  const pct = Math.round(good / rated.length * 100);
+  document.getElementById('statBadge').style.display = 'inline';
+  document.getElementById('statBadge').textContent = `👍${good}/${rated.length} (${pct}%)`;
+}
+
+function exportData() {
+  const dStr = new Date().toISOString().slice(0, 10);
+  const json = {
+    export_time: new Date().toISOString(),
+    version: 'V4.0',
+    session_count: sessions.length,
+    turn_count: allTurns().length,
+    sessions: sessions,
+  };
+  downloadBlob(JSON.stringify(json, null, 2), 'application/json', 'agent_sessions_' + dStr + '.json');
+
+  let md = `# 绿煌老周翡翠智能体 — 全部对话导出\n\n导出时间：${new Date().toISOString()}\n共 ${sessions.length} 个对话，${allTurns().length} 轮\n\n---\n\n`;
+  sessions.slice().sort((a, b) => b.updatedAt - a.updatedAt).forEach(s => {
+    md += `## ${s.title}（${new Date(s.updatedAt).toLocaleString('zh-CN')}）\n\n`;
+    s.turns.forEach((t, i) => {
+      md += `### 第${i + 1}轮\n**客户**：${t.customer}\n`;
+      if (t.imageNote) md += `\n**[截图识别]**：${t.imageNote}\n`;
+      if (t.agentOutput) md += `\n**智能体输出**：\n\`\`\`\n${t.agentOutput}\n\`\`\`\n`;
+      if (t.rating) md += `\n**反馈**：${t.rating === 'good' ? '👍好' : '👎差'}${t.note ? '　备注：' + t.note : ''}\n`;
+      if (t.editedDraft) md += `\n**人工修改后的草稿**（可用于迭代训练）：${t.editedDraft}\n`;
+      md += `\n`;
+    });
+    md += `---\n\n`;
+  });
+  setTimeout(() => downloadBlob(md, 'text/markdown', 'agent_sessions_' + dStr + '.md'), 250);
+}
+
+function openStats() {
+  const rated = allTurns().filter(t => t.rating);
+  const total = rated.length;
+  const good = rated.filter(t => t.rating === 'good').length;
+  const pct = total > 0 ? Math.round(good / total * 100) : 0;
+
+  const byDay = {};
+  rated.forEach(t => {
+    const day = new Date(t.time).toISOString().slice(0, 10);
+    if (!byDay[day]) byDay[day] = { total: 0, good: 0 };
+    byDay[day].total++;
+    if (t.rating === 'good') byDay[day].good++;
+  });
+  const days = Object.entries(byDay).sort().reverse().slice(0, 14);
+  const daysHtml = days.map(([d, v]) => `${d}: 👍${v.good}/${v.total}`).join('<br>');
+
+  const recent = rated.slice().sort((a, b) => b.time - a.time).slice(0, 10);
+  const recentHtml = recent.map(t => `${new Date(t.time).toISOString().slice(5, 16)} ${t.rating === 'good' ? '✅' : '❌'} ${escapeHtml(t.customer.slice(0, 20))}`).join('<br>');
+
+  document.getElementById('statsContent').innerHTML = `
+    <p><b>会话数：</b>${sessions.length} 个 | <b>总对话轮次：</b>${allTurns().length}</p>
+    <p><b>已评分反馈：</b>${total} | 👍${good} | 👎${total - good} | 好评率 ${pct}%</p>
+    <hr style="border-color:#2a2a2a;margin:10px 0;">
+    <p><b>按日统计：</b></p><p style="font-size:12px;color:#999;">${daysHtml || '暂无数据'}</p>
+    <hr style="border-color:#2a2a2a;margin:10px 0;">
+    <p><b>最近反馈：</b></p><p style="font-size:12px;color:#999;">${recentHtml || '暂无数据'}</p>
+    <p style="font-size:11px;color:#555;margin-top:8px;">数据仅存本机浏览器。点击「导出全部数据」下载全部对话（含未评分）用于迭代。</p>
+  `;
+  document.getElementById('statsModal').classList.add('show');
+}
+
+// ── 初始化 ──
+loadModels();
+loadSessions();
+if (sessions.length === 0 || !sessions.find(s => s.id === currentSessionId)) {
+  createSession();
+} else {
+  renderSessionList();
+  renderCurrentSession();
+}
+renderModelSelect();
+updateStats();
+
+document.getElementById('settingsModal').addEventListener('click', function (e) {
+  if (e.target === this) closeSettings();
+});
+document.getElementById('statsModal').addEventListener('click', function (e) {
+  if (e.target === this) document.getElementById('statsModal').classList.remove('show');
+});
+
+if (getActiveModel()) {
+  const am = getActiveModel();
+  setTimeout(() => addBubble(`✅ 当前模型：${am.name}（${am.model}），接收客户消息即可使用`, 'system-msg'), 100);
+} else {
+  setTimeout(() => addBubble('💡 点击右上角 ⚙设置 → 模型管理，添加一个模型（DeepSeek/通义千问/Kimi/GLM/OpenAI 等），或直接输入消息使用演示模式。点击 🎭 选择预设测试场景，🖼️ 上传客户截图。', 'system-msg'), 100);
+}
+</script>
+</body>
+</html>

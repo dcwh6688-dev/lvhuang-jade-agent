@@ -281,6 +281,20 @@ body {
 .lock-overlay button:hover { background:var(--accent2); }
 .lock-overlay .lock-err { color:var(--danger); font-size:12px; margin-top:8px; min-height:16px; }
 
+/* ── 客户档案 / 编号 / 模式 ── */
+.session-jump { padding:6px 8px; border-bottom:1px solid var(--border); }
+.session-jump input { width:100%; background:#252525; border:1px solid var(--border); border-radius:6px; color:var(--text); padding:6px 8px; font-size:12px; outline:none; }
+.session-jump input:focus { border-color:var(--accent); }
+.rel-badge { display:inline-block; background:rgba(16,185,129,.15); color:var(--accent); padding:0 5px; border-radius:8px; font-size:10px; margin-left:4px; }
+.cur-customer { font-size:12px; color:var(--accent); font-weight:400; }
+.mode-select { background:#252525; border:1px solid var(--border); border-radius:6px; color:var(--text); font-size:12px; padding:4px 6px; outline:none; max-width:110px; flex-shrink:0; }
+.pf-group { margin-bottom:12px; }
+.pf-group-title { font-size:11px; color:var(--accent); font-weight:700; letter-spacing:1px; margin-bottom:6px; }
+.pf-row { display:flex; align-items:flex-start; gap:8px; margin-bottom:6px; }
+.pf-label { width:60px; flex-shrink:0; font-size:12px; color:var(--text2); padding-top:6px; }
+.pf-input { flex:1; min-width:0; background:#252525; border:1px solid var(--border); border-radius:6px; color:var(--text); padding:6px 8px; font-size:13px; font-family:inherit; outline:none; resize:vertical; }
+.pf-input:focus { border-color:var(--accent); }
+
 /* ── 响应式 ── */
 @media (max-width: 860px) {
   .app { flex-direction:column; }
@@ -312,8 +326,11 @@ body {
   <!-- ═══════════ 对话列表面板 ═══════════ -->
   <div class="session-panel" id="sessionPanel">
     <div class="session-header">
-      <span class="title">对话记录</span>
+      <span class="title">客户</span>
       <button class="new-btn" onclick="createSession()">＋ 新建</button>
+    </div>
+    <div class="session-jump">
+      <input id="codeJump" placeholder="🔍 LH编号 / 姓名" onkeydown="if(event.key==='Enter')jumpToCustomer()">
     </div>
     <div class="session-list" id="sessionList"></div>
   </div>
@@ -333,9 +350,14 @@ body {
     <div class="chat-header">
       <div class="avatar">周</div>
       <div class="info">
-        <div class="name">周杨</div>
+        <div class="name">周杨 <span id="curCustomer" class="cur-customer"></span></div>
         <div class="status"><span class="dot"></span>在线 · Co-pilot 模式</div>
       </div>
+      <select id="modeSelect" class="mode-select" onchange="onModeChange()" title="本客户对话模式">
+        <option value="auto">模式·自动</option>
+        <option value="relation">强制闲聊</option>
+        <option value="deal">强制谈货</option>
+      </select>
     </div>
     <div class="chat-msgs" id="chatMsgs">
       <div class="chat-bubble system-msg">客户消息将在此展示，智能体在右侧输出分析报告</div>
@@ -357,6 +379,7 @@ body {
   <!-- ═══════════ 分析面板 ═══════════ -->
   <div class="analysis-panel">
     <div class="analysis-tabs">
+      <button onclick="switchTab('profile')">👤 档案</button>
       <button class="active" onclick="switchTab('insight')">🧠 洞察</button>
       <button onclick="switchTab('strategy')">🎯 策略</button>
       <button onclick="switchTab('goods')">📦 选货</button>
@@ -370,6 +393,13 @@ body {
         <p style="font-size:12px;color:#555;">支持 DeepSeek / OpenAI 兼容 API，可在右上角切换模型</p>
       </div>
 
+      <div class="segment" id="seg-profile">
+        <div class="segment-title" style="display:flex;align-items:center;justify-content:space-between;">
+          <span>【客户档案】<span id="profileCodeLabel" style="color:var(--text2);font-weight:400;font-size:11px;"></span></span>
+          <span style="color:var(--text2);font-weight:400;font-size:11px;">聊天中自动更新 · 可手动编辑</span>
+        </div>
+        <div id="seg-profile-content"></div>
+      </div>
       <div class="segment" id="seg-insight">
         <div class="segment-title">【1. 客户洞察】</div>
         <div id="seg-insight-content"></div>
@@ -440,8 +470,8 @@ body {
 
     <label>System Prompt（可编辑）</label>
     <textarea id="cfgPrompt" placeholder="粘贴 System Prompt…"></textarea>
-    <label>客户场景预设（可选，模拟历史对话上下文）</label>
-    <textarea id="cfgContext" placeholder="客户称呼: 王姐&#10;圈口: 55&#10;预算: 5000-8000&#10;来源: 自然流&#10;阶段: S1"></textarea>
+    <label>全局补充说明（选填，对所有客户生效 · 请勿填具体客户信息）</label>
+    <textarea id="cfgContext" placeholder="例如：本月活动规则、统一话术口径等。&#10;具体客户信息请用右侧「👤 档案」，每位客户独立、互不干扰。"></textarea>
     <label>数据收集端点（可选填写，用于自动上报反馈数据到你的服务器）</label>
     <input id="cfgWebhook" placeholder="https://xxx.com/api/feedback">
     <p style="font-size:11px;color:#666;margin-top:2px;">所有对话默认存本机浏览器（点击「导出数据」可一次性导出全部对话）。配置 Webhook 后每次评分会额外自动 POST 到该地址。</p>
@@ -709,6 +739,47 @@ B货鉴别：打灯网状纹（充胶痕迹），光泽发蜡，紫外灯下蓝�
 - 背书服务于当下那句话，不单独成段出现
 - 禁止：整段复制档案、一次堆多个事实、无关背景时主动介绍
 
+### 【KB20 关系经营 · 双模式与关系分层】
+你不只帮销售谈货成交，也帮销售和客户建立产品以外的真实关系。
+系统每轮会注入【当前客户常驻档案】，务必先读档案再回应，不问已知信息，保持上下文连贯；并在【6.档案更新】回填本轮新获知的信息。
+
+每轮先判断【本轮模式】：
+- 谈货模式：客户在问货/问价/推进成交 → 走常规五段式，目标推进交易
+- 关系经营模式：客户在闲聊、寒暄、分享生活，或当前阶段适合维系升温 → 目标是加深关系、积累信任，不急着转产品
+（系统可能强制指定模式，以注入的模式说明为准；未指定则你自己判断）
+
+关系分层 R0–R3（决定闲聊能聊多深，是防尬的护栏）：
+- R0 陌生/刚加：只做轻互动、礼貌回应，不主动碰私人话题（家庭/感情/收入/隐私）
+- R1 认识：可聊城市、天气时令、工作大方向、兴趣爱好等浅层话题
+- R2 熟络：可聊家庭近况、生活细节、共同话题，可适度分享自己
+- R3 信任朋友：可深聊、可主动分享观点与经历、可轻松调侃
+铁律：
+- 话题深度绝不超过当前关系层级；拿不准就往浅了聊
+- 每轮判断当前层级，并评估本轮能否自然升层（在档案更新里标注，如 R1→R2）
+- 升层是自然发生的，不硬推
+
+### 【KB21 闲聊 · 话题矩阵 · 价值投射 · 护栏】
+主动找话题（从客户档案取料）：
+- 城市/籍贯 → 当地风物、美食、天气、节庆
+- 工作/行业 → 行业近况、辛苦与成就（共情，不盘问收入）
+- 家庭 → 家人近况、孩子教育、长辈健康（仅 R2+）
+- 共同经历/交集 → 一起经历过的事、都去过的地方
+- 兴趣爱好 → 顺着聊，适度请教
+- 时令/节气/热点 → 节日问候、天气变化、应景话题
+
+价值投射（让客户感到"认识你有价值"，但顺带露出、绝不炫耀/说教）：
+- 人脉价值：见识广、圈子资源（点到即止）
+- 专业价值：原石、公盘、鉴定的真东西，老周的强项（最自然的信任来源）
+- 博学价值：生活、文化、见识方面的小知识，点到为止
+原则：价值在聊天里自然流露，服务于关系升温，不是刷存在感。
+
+闲聊护栏（出现即重写）：
+- 轻松优先，不盘问：一轮最多问 1 个开放问题，其余是分享/回应
+- 关系没到的话题（感情、收入、隐私、敏感）不主动碰
+- 不硬转产品：闲聊里最多埋一个"软钩子"，绝不逼单、不突兀推货
+- 每句先接客户的话头再延伸，不自说自话
+- 不尬吹、不假热情、不说教
+
 ---
 
 ## 五、特殊场景规则
@@ -742,43 +813,65 @@ B货鉴别：打灯网状纹（充胶痕迹），光泽发蜡，紫外灯下蓝�
 
 ---
 
-## 七、输出格式（五段式分析报告）
+## 七、输出格式
 
-每次收到客户消息，严格按以下格式输出：
+先判断【本轮模式】（谈货 / 关系经营），再严格按以下格式输出。
+谈货模式重心在【2-4】；关系经营模式重心在【1 关系层级 / 2 关系目的 / 4 闲聊话术 / 6 档案更新】。
+【6. 档案更新】每轮必出，用于沉淀客户长期档案（前端会自动并入档案）。
 
 ═══════════════════════════════════════
 【1. 客户洞察】
+  - 本轮模式：[谈货 / 关系经营]
+  - 关系层级：[R0未建立 / R1认识 / R2熟络 / R3信任朋友]
   - 心理状态：
-  - 意图类型：[A/B/C/D/E/F/G]
+  - 意图类型：[A/B/C/D/E/F/G，纯闲聊可标 H关系经营]
   - 经验水平：[零知识/有基础/懂行/同行]
   - 性格调性：[务实/感性/懂行/依赖/情绪]
   - 信任程度：[高/中/低/未建立]
-  - 当前卡点：[价格/信任/需求模糊/情绪/决策犹豫/无]
+  - 当前卡点：[价格/信任/需求模糊/情绪/决策犹豫/关系尚浅/无]
   - 风险信号：[无/冲动/未成年/疑似同行/售后隐患]
-  - 持久信息：[称呼]|[圈口]|[预算]|[已看货品]|[阶段]|[来源]
 
 【2. 策略建议】
   - 调用知识：[KB编号 + 具体场景]
   - 当前阶段：[S0引流/S1首咨/S2需确/S3货比/S4谈价/S5成交/S6发货/S7收货/S8售后]
-  - 本轮核心策略：（一句话）
+  - 本轮目的：[谈货=核心策略一句话 / 关系经营=升温·维系·埋软钩 之一]
   - 下一步目标：
   - ⚠ 特殊处理：[无/人工升级/情绪优先]
 
 【3. 选货指导】
-  （本轮无需选货时标注「本轮无需选货」）
+  （本轮无需选货 / 纯闲聊时标注「本轮无需选货」）
   - 推荐方向：[品类/种水/预算/题材]
   - 排除条件：
   - 助理待办：
 
 【4. 建议回复草稿】
   ┌─[审核后发送]─────────────────┐
-  │ [可直接复制发送的微信回复]         │
+  │ [可直接复制发送的微信回复 / 闲聊话术] │
   └────────────────────────────────┘
 
 【5. 执行提醒】
   - 助理动作：
   - 跟进节点：
   - 风险预警：[无/...]
+
+【6. 档案更新】
+  （仅写本轮新获知或有变化的信息，没有就写「无」；每项一行「字段: 值」）
+  城市:
+  工作:
+  家庭:
+  兴趣:
+  性格:
+  共同经历:
+  禁忌雷区:
+  圈口:
+  预算:
+  偏好:
+  已看:
+  已购:
+  聊过话题: [本轮聊了什么，一句话]
+  关系层级: [R0/R1/R2/R3；若本轮可升层写 R1→R2]
+  下次话头: [下次可以从哪个话题自然切入]
+  待跟进:
 ═══════════════════════════════════════`;
 
 // ── 预设场景 ──
@@ -830,6 +923,26 @@ const MODEL_PRESETS = {
   glm4v: { name:'智谱GLM-4V-Flash（免费）', endpoint:'https://open.bigmodel.cn/api/paas/v4/chat/completions', model:'glm-4v-flash', vision:true },
   qwenvl: { name:'通义千问VL', endpoint:'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions', model:'qwen-vl-plus', vision:true },
 };
+
+// ── 客户档案字段定义 ──
+const PROFILE_GROUPS = [
+  { group:'基础', fields:['称呼','性别','年龄段','城市'] },
+  { group:'生活', fields:['工作','家庭','兴趣','性格'] },
+  { group:'交集', fields:['共同经历','话题钩子','禁忌雷区'] },
+  { group:'翡翠', fields:['圈口','预算','偏好','已看','已购'] },
+  { group:'关系', fields:['关系层级','聊过话题','下次话头','待跟进'] },
+];
+const PROFILE_KEYS = PROFILE_GROUPS.reduce((a,g)=>a.concat(g.fields),[]);
+const LONG_FIELDS = ['家庭','共同经历','话题钩子','禁忌雷区','已看','已购','聊过话题','下次话头','待跟进'];
+const APPEND_KEYS = ['聊过话题','待跟进','已看','已购'];
+const REL_LEVELS = ['R0','R1','R2','R3'];
+function emptyProfile(){ const p={}; PROFILE_KEYS.forEach(k=>p[k]=''); p['关系层级']='R0'; return p; }
+function nextCode(){ let n=parseInt(localStorage.getItem('lh_agent_code_seq')||'0',10)+1; localStorage.setItem('lh_agent_code_seq', String(n)); return 'LH'+String(n).padStart(5,'0'); }
+function formatProfileForPrompt(p){
+  const lines=['- 关系层级：'+(p['关系层级']||'R0')];
+  PROFILE_KEYS.forEach(k=>{ if(k!=='关系层级' && p[k] && String(p[k]).trim()) lines.push('- '+k+'：'+String(p[k]).trim()); });
+  return lines.join('\n');
+}
 
 // ── 全局状态 ──
 let models = [];
@@ -919,6 +1032,8 @@ function showEmpty(show) {
 }
 
 function switchTab(tab) {
+  const empty = document.getElementById('emptyState');
+  if (empty) empty.style.display = 'none';
   document.querySelectorAll('.analysis-tabs button').forEach(b => b.classList.remove('active'));
   document.querySelectorAll('.segment').forEach(s => s.classList.remove('active'));
   const btn = document.querySelector(`.analysis-tabs button[onclick="switchTab('${tab}')"]`);
@@ -1073,12 +1188,24 @@ function onModelSelectChange() {
 function loadSessions() {
   sessions = JSON.parse(localStorage.getItem('lh_agent_sessions') || '[]');
   currentSessionId = localStorage.getItem('lh_agent_current_session_id') || null;
+  // 迁移：补编号 / 档案 / 模式
+  let maxSeq = parseInt(localStorage.getItem('lh_agent_code_seq') || '0', 10);
+  sessions.forEach(s => { const m = /^LH0*(\d+)$/.exec(s.code || ''); if (m) maxSeq = Math.max(maxSeq, parseInt(m[1], 10)); });
+  localStorage.setItem('lh_agent_code_seq', String(maxSeq));
+  let changed = false;
+  sessions.forEach(s => {
+    if (!s.profile) { s.profile = emptyProfile(); changed = true; }
+    else PROFILE_KEYS.forEach(k => { if (s.profile[k] === undefined) { s.profile[k] = (k === '关系层级' ? 'R0' : ''); changed = true; } });
+    if (!s.mode) { s.mode = 'auto'; changed = true; }
+    if (!s.code) { s.code = nextCode(); changed = true; }
+  });
+  if (changed) saveSessions();
 }
 function saveSessions() { localStorage.setItem('lh_agent_sessions', JSON.stringify(sessions)); }
 function getCurrentSession() { return sessions.find(s => s.id === currentSessionId) || null; }
 
 function createSession() {
-  const s = { id: 'S' + Date.now(), title: '新对话', createdAt: Date.now(), updatedAt: Date.now(), turns: [] };
+  const s = { id: 'S' + Date.now(), code: nextCode(), title: '新客户', profile: emptyProfile(), mode: 'auto', createdAt: Date.now(), updatedAt: Date.now(), turns: [] };
   sessions.unshift(s);
   currentSessionId = s.id;
   saveSessions();
@@ -1121,7 +1248,9 @@ function renderSessionList() {
     row.className = 'session-item' + (s.id === currentSessionId ? ' active' : '');
     row.onclick = () => switchSession(s.id);
     const t = new Date(s.updatedAt).toLocaleString('zh-CN', { month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' });
-    row.innerHTML = `<div class="session-title">${escapeHtml(s.title)}</div><div class="session-meta">${t} · ${s.turns.length}轮</div>
+    const nm = (s.profile && s.profile.称呼) ? s.profile.称呼 : (s.title || '');
+    const lv = (s.profile && s.profile.关系层级) || 'R0';
+    row.innerHTML = `<div class="session-title">${escapeHtml(s.code || '')} · ${escapeHtml(nm)}</div><div class="session-meta">${t} · ${s.turns.length}轮 <span class="rel-badge">${escapeHtml(lv)}</span></div>
       <span class="session-rename" title="重命名">✎</span><span class="session-del" title="删除">×</span>`;
     row.querySelector('.session-rename').onclick = (e) => renameSession(s.id, e);
     row.querySelector('.session-del').onclick = (e) => deleteSession(s.id, e);
@@ -1133,6 +1262,8 @@ function renderCurrentSession() {
   document.getElementById('chatMsgs').innerHTML = '';
   currentConversation = [];
   currentTurnRef = null;
+  updateCustomerBar();
+  renderProfileEditor();
   if (!s || s.turns.length === 0) {
     document.getElementById('chatMsgs').innerHTML = '<div class="chat-bubble system-msg">新对话开始。输入客户消息，或点击 🎭 选预设、🖼️ 传截图。</div>';
     showEmpty(true);
@@ -1183,6 +1314,103 @@ function allTurns() {
   const list = [];
   sessions.forEach(s => s.turns.forEach(t => list.push(t)));
   return list;
+}
+
+// ── 客户编号跳转 / 模式 / 档案 ──
+function jumpToCustomer() {
+  const inp = document.getElementById('codeJump');
+  const q = inp.value.trim();
+  if (!q) return;
+  const ql = q.toLowerCase();
+  let s = sessions.find(x => (x.code || '').toLowerCase() === ql);
+  if (!s) s = sessions.find(x => (x.code || '').toLowerCase().includes(ql) || ((x.profile && x.profile.称呼) || '').includes(q) || (x.title || '').includes(q));
+  if (s) { inp.value = ''; switchSession(s.id); }
+  else if (confirm('没找到「' + q + '」，新建一个客户？')) { inp.value = ''; createSession(); }
+}
+function onModeChange() {
+  const s = getCurrentSession();
+  if (!s) return;
+  s.mode = document.getElementById('modeSelect').value;
+  saveSessions();
+}
+function updateCustomerBar() {
+  const s = getCurrentSession();
+  const el = document.getElementById('curCustomer');
+  const ms = document.getElementById('modeSelect');
+  if (s) {
+    const nm = (s.profile && s.profile.称呼) || s.title || '';
+    const lv = (s.profile && s.profile.关系层级) || 'R0';
+    if (el) el.textContent = (s.code || '') + (nm ? (' · ' + nm) : '') + ' · ' + lv;
+    if (ms) ms.value = s.mode || 'auto';
+  } else if (el) el.textContent = '';
+}
+function escAttr(s) { return escapeHtml(s).replace(/"/g, '&quot;'); }
+function renderProfileEditor() {
+  const el = document.getElementById('seg-profile-content');
+  if (!el) return;
+  const s = getCurrentSession();
+  if (!s) { el.innerHTML = '<div class="item"><span class="label">暂无客户，点击左上角「＋ 新建」</span></div>'; return; }
+  if (!s.profile) s.profile = emptyProfile();
+  const p = s.profile;
+  let html = '';
+  PROFILE_GROUPS.forEach(g => {
+    html += '<div class="pf-group"><div class="pf-group-title">' + g.group + '</div>';
+    g.fields.forEach(k => {
+      let input;
+      if (k === '关系层级') {
+        input = '<select class="pf-input" onchange="saveProfileField(\'' + k + '\',this.value)">' +
+          REL_LEVELS.map(r => '<option value="' + r + '"' + ((p[k] || 'R0') === r ? ' selected' : '') + '>' + r + '</option>').join('') + '</select>';
+      } else if (LONG_FIELDS.includes(k)) {
+        input = '<textarea class="pf-input" rows="2" onchange="saveProfileField(\'' + k + '\',this.value)">' + escapeHtml(p[k] || '') + '</textarea>';
+      } else {
+        input = '<input class="pf-input" value="' + escAttr(p[k] || '') + '" onchange="saveProfileField(\'' + k + '\',this.value)">';
+      }
+      html += '<div class="pf-row"><label class="pf-label">' + k + '</label>' + input + '</div>';
+    });
+    html += '</div>';
+  });
+  el.innerHTML = html;
+  const lbl = document.getElementById('profileCodeLabel');
+  if (lbl) lbl.textContent = ' ' + (s.code || '') + (p.称呼 ? (' ' + p.称呼) : '');
+}
+function saveProfileField(key, value) {
+  const s = getCurrentSession();
+  if (!s) return;
+  if (!s.profile) s.profile = emptyProfile();
+  s.profile[key] = value;
+  saveSessions();
+  if (key === '称呼' || key === '关系层级') { renderSessionList(); updateCustomerBar(); }
+}
+// 从智能体输出中解析【6.档案更新】并自动并入档案
+function parseProfileUpdate(text) {
+  const m = text.match(/【6[.、][^】]*】([\s\S]*?)(?:═══|$)/);
+  if (!m) return null;
+  const upd = {};
+  m[1].split('\n').forEach(line => {
+    const mm = line.match(/^\s*[-•]?\s*([^:：]{1,8})[:：]\s*(.+?)\s*$/);
+    if (!mm) return;
+    const key = mm[1].trim();
+    let val = mm[2].trim().replace(/^[\[【]|[\]】]$/g, '').trim();
+    if (!val || /^(无|暂无|无变化|N\/?A|-|—)$/i.test(val)) return;
+    if (PROFILE_KEYS.includes(key)) upd[key] = val;
+  });
+  return Object.keys(upd).length ? upd : null;
+}
+function mergeProfile(profile, upd) {
+  Object.keys(upd).forEach(k => {
+    const v = upd[k];
+    if (k === '关系层级') {
+      const mm = v.match(/R([0-3])\s*(?:→|->|至|到)\s*R([0-3])/) || v.match(/R([0-3])/);
+      if (mm) profile[k] = 'R' + mm[mm.length - 1];
+      return;
+    }
+    if (APPEND_KEYS.includes(k)) {
+      if (!profile[k]) profile[k] = v;
+      else if (!profile[k].includes(v)) profile[k] = (profile[k] + '；' + v).slice(-600);
+    } else {
+      profile[k] = v;
+    }
+  });
 }
 
 // ── 解析智能体输出 ──
@@ -1309,8 +1537,17 @@ async function callLLM(customerMsg, model) {
     { role: 'system', content: settings.prompt || DEFAULT_PROMPT },
   ];
 
+  const sess = getCurrentSession();
+  if (sess && sess.profile) {
+    const pt = formatProfileForPrompt(sess.profile);
+    messages.push({ role: 'system', content: `【当前客户常驻档案 · ${sess.code}${sess.profile.称呼 ? (' ' + sess.profile.称呼) : ''}】\n${pt}\n\n这是该客户的长期档案，每轮都要先读、保持上下文连贯，不要重复询问已知信息。` });
+    const modeText = sess.mode === 'relation' ? '本次强制【关系经营/闲聊】模式：目标是加深关系、积累信任，不推产品、不逼单。'
+      : sess.mode === 'deal' ? '本次强制【谈货】模式：聚焦需求与成交推进。'
+      : '本次模式：由你自动判断（谈货 or 关系经营）。';
+    messages.push({ role: 'system', content: modeText });
+  }
   if (settings.context && settings.context.trim()) {
-    messages.push({ role: 'system', content: `当前客户上下文信息：\n${settings.context}\n请基于以上信息分析以下客户消息。` });
+    messages.push({ role: 'system', content: `全局补充说明（与具体客户无关）：\n${settings.context}` });
   }
 
   const recentHistory = currentConversation.slice(-6);
@@ -1414,8 +1651,10 @@ async function sendMsg() {
     const parsed = parseAgentOutput(agentOutput);
     const turn = saveTurn(session, { customer: msg || '[图片]', imageNote, agentOutput });
     currentConversation.push(turn);
+    const upd = parseProfileUpdate(agentOutput);
+    if (upd) { mergeProfile(session.profile, upd); saveSessions(); renderSessionList(); renderProfileEditor(); updateCustomerBar(); }
     renderAnalysisForTurn(parsed, turn);
-    addBubble('智能体分析完成 ✓ （查看右侧报告）', 'system-msg');
+    addBubble('智能体分析完成 ✓ （右侧「👤 档案」已自动更新）', 'system-msg');
     addQuoteCta();
   } catch (e) {
     addBubble('❌ ' + e.message, 'system-msg');
